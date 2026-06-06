@@ -625,7 +625,10 @@ canvas {
 }
 
 .daily-state.saved {
-  border-color: rgba(156, 230, 184, 0.35);
+  border-color: rgba(156, 230, 184, 0.5);
+  background:
+    linear-gradient(135deg, rgba(156, 230, 184, 0.08), transparent 42%),
+    linear-gradient(180deg, var(--panel), var(--panel-3));
 }
 
 .daily-state.unsaved {
@@ -637,19 +640,25 @@ canvas {
   grid-template-columns: 1fr auto;
   gap: 10px;
   align-items: center;
-  border: 1px solid var(--line);
+  border: 1px solid rgba(156, 230, 184, 0.32);
   border-radius: 6px;
-  background: #0c0f0b;
+  background:
+    linear-gradient(90deg, rgba(156, 230, 184, 0.08), transparent 58%),
+    #0c0f0b;
   padding: 12px;
   box-shadow: var(--inset);
 }
 
 .saved-day strong,
-.saved-day span {
+.saved-meta {
   display: block;
 }
 
-.saved-day span {
+.saved-day strong {
+  color: var(--accent-2);
+}
+
+.saved-meta {
   margin-top: 4px;
   color: var(--muted);
   font-size: 0.8rem;
@@ -658,16 +667,18 @@ canvas {
 
 .saved-pill {
   display: inline-flex;
+  justify-content: center;
   align-items: center;
   min-height: 28px;
   padding: 0 9px;
-  border: 1px solid rgba(156, 230, 184, 0.34);
+  border: 1px solid rgba(156, 230, 184, 0.52);
   border-radius: 999px;
-  background: rgba(156, 230, 184, 0.12);
+  background: rgba(156, 230, 184, 0.16);
   color: var(--accent-2) !important;
   font-family: "IBM Plex Mono", ui-monospace, monospace;
   font-size: 0.68rem !important;
   font-weight: 700 !important;
+  text-transform: uppercase;
 }
 
 .calendar {

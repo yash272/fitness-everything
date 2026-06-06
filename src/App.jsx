@@ -459,8 +459,8 @@ function DailyView({ workouts, bodyLogs, selectedDate, setSelectedDate, calendar
         {selectedLog && !isEditing ? (
           <div className="saved-day">
             <div>
-              <strong>{selectedLog.did_workout ? selectedLog.split : "No Gym"}</strong>
-              <span>{dailyMeta(selectedLog, selectedBodyLog)}</span>
+              <strong>{selectedLog.did_workout ? "Gym logged" : "No Gym"}</strong>
+              <span className="saved-meta">{dailyMeta(selectedLog, selectedBodyLog)}</span>
             </div>
             <span className="saved-pill">Saved</span>
           </div>
