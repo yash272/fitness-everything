@@ -282,6 +282,11 @@ select:focus {
   gap: 9px;
 }
 
+.one-field {
+  display: grid;
+  gap: 9px;
+}
+
 .primary,
 .secondary,
 .danger {
@@ -622,7 +627,8 @@ canvas {
 }
 
 .calendar-day strong,
-.calendar-day span {
+.calendar-day span,
+.calendar-day small {
   display: block;
 }
 
@@ -638,6 +644,13 @@ canvas {
   font-weight: 900;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.calendar-day small {
+  min-height: 14px;
+  color: var(--soft);
+  font-size: 0.62rem;
+  font-weight: 800;
 }
 
 .calendar-day.muted {

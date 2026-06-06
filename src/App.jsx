@@ -324,11 +324,13 @@ function Tracker() {
       {!loading && activeView === "daily" && (
         <DailyView
           workouts={workouts}
+          bodyLogs={bodyLogs}
           selectedDate={selectedDate}
           setSelectedDate={setSelectedDate}
           calendarMonth={calendarMonth}
           setCalendarMonth={setCalendarMonth}
           saveDailyLog={saveDailyLog}
+          selectedSplit={selectedSplit}
           saving={saving}
         />
       )}
@@ -401,19 +403,18 @@ function Dashboard({ workoutSets, todayWorkout, todayPrs, latestBody, weekDays, 
   );
 }
 
-function DailyView({ workouts, selectedDate, setSelectedDate, calendarMonth, setCalendarMonth, saveDailyLog, saving }) {
+function DailyView({ workouts, bodyLogs, selectedDate, setSelectedDate, calendarMonth, setCalendarMonth, saveDailyLog, selectedSplit, saving }) {
   const selectedLog = workouts.find((workout) => workout.workout_date === selectedDate);
+  const selectedBodyLog = bodyLogs.find((entry) => entry.log_date === selectedDate);
   const [isEditing, setIsEditing] = useState(!selectedLog);
   const [form, setForm] = useState({
     didWorkout: selectedLog?.did_workout || false,
-    split: selectedLog?.split || "Push",
     steps: selectedLog?.steps ?? ""
   });
 
   useEffect(() => {
     setForm({
       didWorkout: selectedLog?.did_workout || false,
-      split: selectedLog?.split || "Push",
       steps: selectedLog?.steps ?? ""
     });
     setIsEditing(!selectedLog);
@@ -421,7 +422,11 @@ function DailyView({ workouts, selectedDate, setSelectedDate, calendarMonth, set
 
   async function submit(event) {
     event.preventDefault();
-    const saved = await saveDailyLog({ date: selectedDate, ...form });
+    const saved = await saveDailyLog({
+      date: selectedDate,
+      ...form,
+      split: selectedLog?.split || selectedSplit || "Push"
+    });
     if (saved) setIsEditing(false);
   }
 
@@ -436,6 +441,7 @@ function DailyView({ workouts, selectedDate, setSelectedDate, calendarMonth, set
         <CalendarGrid
           month={calendarMonth}
           workouts={workouts}
+          bodyLogs={bodyLogs}
           selectedDate={selectedDate}
           setSelectedDate={setSelectedDate}
         />
@@ -454,7 +460,7 @@ function DailyView({ workouts, selectedDate, setSelectedDate, calendarMonth, set
           <div className="saved-day">
             <div>
               <strong>{selectedLog.did_workout ? selectedLog.split : "No Gym"}</strong>
-              <span>{selectedLog.steps ? `${Number(selectedLog.steps).toLocaleString()} steps` : "No steps logged"}</span>
+              <span>{dailyMeta(selectedLog, selectedBodyLog)}</span>
             </div>
             <span className="saved-pill">Saved</span>
           </div>
@@ -464,13 +470,7 @@ function DailyView({ workouts, selectedDate, setSelectedDate, calendarMonth, set
               <button type="button" className={form.didWorkout ? "active" : ""} onClick={() => setForm({ ...form, didWorkout: true })}>Gym</button>
               <button type="button" className={!form.didWorkout ? "active" : ""} onClick={() => setForm({ ...form, didWorkout: false })}>No Gym</button>
             </div>
-            <div className="two-fields">
-              <label>
-                Workout
-                <select value={form.split} onChange={(event) => setForm({ ...form, split: event.target.value })}>
-                  {SPLITS.map((split) => <option key={split} value={split}>{split}</option>)}
-                </select>
-              </label>
+            <div className="one-field">
               <label>
                 Steps
                 <input type="number" min="0" inputMode="numeric" value={form.steps} placeholder="8500" onChange={(event) => setForm({ ...form, steps: event.target.value })} />
@@ -486,19 +486,27 @@ function DailyView({ workouts, selectedDate, setSelectedDate, calendarMonth, set
 
       <section className="panel-section">
         <h2>{formatLongDate(selectedDate)} Workouts</h2>
-        <DayWorkoutDetails workout={selectedLog} />
+        <DayWorkoutDetails workout={selectedLog} bodyLog={selectedBodyLog} />
       </section>
     </>
   );
 }
 
-function DayWorkoutDetails({ workout }) {
-  if (!workout) return <Empty text="No entry saved for this day yet." />;
+function DayWorkoutDetails({ workout, bodyLog }) {
+  if (!workout && !bodyLog) return <Empty text="No entry saved for this day yet." />;
+  if (!workout) {
+    return (
+      <div className="day-summary rest">
+        <strong>Body log</strong>
+        <span>{bodyLog ? `${Number(bodyLog.weight).toFixed(1)} kg${bodyLog.body_fat ? ` - ${bodyLog.body_fat}% body fat` : ""}` : "No workout logged"}</span>
+      </div>
+    );
+  }
   if (!workout.did_workout && !workout.exercises?.length) {
     return (
       <div className="day-summary rest">
         <strong>No gym</strong>
-        <span>{workout.steps ? `${Number(workout.steps).toLocaleString()} steps logged` : "No workout logged"}</span>
+        <span>{dailyMeta(workout, bodyLog)}</span>
       </div>
     );
   }
@@ -507,7 +515,7 @@ function DayWorkoutDetails({ workout }) {
     <div className="day-detail">
       <div className="day-summary">
         <strong>{workout.split}</strong>
-        <span>{workout.steps ? `${Number(workout.steps).toLocaleString()} steps` : "No steps logged"}</span>
+        <span>{dailyMeta(workout, bodyLog)}</span>
       </div>
       {workout.exercises?.length ? workout.exercises.map((exercise) => (
         <article className="mini-exercise" key={exercise.id}>
@@ -523,9 +531,10 @@ function DayWorkoutDetails({ workout }) {
   );
 }
 
-function CalendarGrid({ month, workouts, selectedDate, setSelectedDate }) {
+function CalendarGrid({ month, workouts, bodyLogs, selectedDate, setSelectedDate }) {
   const days = calendarDays(month);
   const logsByDate = new Map(workouts.map((workout) => [workout.workout_date, workout]));
+  const bodyLogsByDate = new Map(bodyLogs.map((entry) => [entry.log_date, entry]));
 
   return (
     <div className="calendar">
@@ -533,8 +542,9 @@ function CalendarGrid({ month, workouts, selectedDate, setSelectedDate }) {
       {days.map((day) => {
         const key = dateKey(day);
         const log = logsByDate.get(key);
+        const bodyLog = bodyLogsByDate.get(key);
         const isCurrentMonth = day.getMonth() === month.getMonth();
-        const isSaved = Boolean(log);
+        const isSaved = Boolean(log || bodyLog);
         const didWorkout = Boolean(log?.did_workout || log?.exercises?.length);
         const hasSteps = Number(log?.steps) > 0;
         return (
@@ -545,6 +555,7 @@ function CalendarGrid({ month, workouts, selectedDate, setSelectedDate }) {
           >
             <strong>{day.getDate()}</strong>
             <span>{didWorkout ? log.split : isSaved ? "Saved" : hasSteps ? `${Number(log.steps).toLocaleString()}` : ""}</span>
+            <small>{bodyLog ? `${Number(bodyLog.weight).toFixed(1)} kg` : ""}</small>
           </button>
         );
       })}
@@ -819,6 +830,17 @@ function bodyTrend(entry, logs) {
   const delta = Number(entry.weight) - Number(previous.weight);
   if (Math.abs(delta) < 0.05) return "Even";
   return `${delta > 0 ? "+" : ""}${delta.toFixed(1)} kg`;
+}
+
+function dailyMeta(workout, bodyLog) {
+  const parts = [];
+  if (workout?.steps) parts.push(`${Number(workout.steps).toLocaleString()} steps`);
+  else parts.push("No steps logged");
+  if (bodyLog) {
+    parts.push(`${Number(bodyLog.weight).toFixed(1)} kg`);
+    if (bodyLog.body_fat) parts.push(`${bodyLog.body_fat}% body fat`);
+  }
+  return parts.join(" - ");
 }
 
 function startOfMonth(date) {
