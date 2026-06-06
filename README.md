@@ -1,18 +1,93 @@
 # Fitness Everything
 
-A mobile-first personal fitness tracker that runs as a single HTML file.
+A mobile-first personal fitness tracker built with React, Supabase, and Vercel.
 
 ## Features
 
-- Log Push/Pull/Legs workouts
-- Add exercises with sets, reps, and weight
-- See the previous best for the same exercise
-- Track PRs when you beat a previous weight or rep mark
-- Log body weight and body fat percentage
-- View 30/60/90 day weight trends
-- See workout day counts for the current week and month
-- Store all data locally in your browser
+- Synced workout data across devices
+- Push/Pull/Legs workout tracking
+- Cardio day tracking
+- Daily gym/no-gym status
+- Daily steps
+- Calendar view for workout and rest days
+- Exercises with separate sets, reps, and workout weight in lbs
+- Previous bests for the same exercise
+- PR flags when you beat a previous weight or rep mark
+- Daily body weight in kg and body fat logs
+- 30/60/90 day weight trend chart
+- Current week and month workout day counts
 
-## Run
+## Local Setup
 
-Open `index.html` in your browser.
+1. Install dependencies:
+
+```bash
+npm install
+```
+
+2. Create a Supabase project.
+
+3. Link this repo to that Supabase project:
+
+```bash
+npm run db:login
+npm run db:link
+```
+
+4. Apply database migrations:
+
+```bash
+npm run db:push
+```
+
+This applies the files in `supabase/migrations` to your Supabase database. You do not need to copy/paste SQL into the Supabase dashboard.
+
+5. Copy `.env.example` to `.env.local` and fill in your Supabase values:
+
+```bash
+cp .env.example .env.local
+```
+
+```bash
+VITE_SUPABASE_URL=https://your-project-ref.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-public-key
+VITE_PERSONAL_USER_ID=00000000-0000-4000-8000-000000000000
+```
+
+`VITE_PERSONAL_USER_ID` can be any UUID. Keep the same value across local development and Vercel so all devices read and write the same personal data.
+
+6. Start the app:
+
+```bash
+npm run dev
+```
+
+## Deploy To Vercel
+
+1. Push this repo to GitHub.
+2. Import the GitHub repo in Vercel.
+3. Add these Vercel environment variables:
+
+```bash
+VITE_SUPABASE_URL
+VITE_SUPABASE_ANON_KEY
+VITE_PERSONAL_USER_ID
+```
+
+4. Deploy.
+
+Vercel should auto-detect Vite. The build command is `npm run build`, and the output directory is `dist`.
+
+Database migrations are separate from the Vercel frontend deploy. When the schema changes, run:
+
+```bash
+npm run db:push
+```
+
+Then deploy the app.
+
+## Data Storage
+
+Workout and body data are stored in Supabase Postgres tables under your `VITE_PERSONAL_USER_ID`.
+
+This no-login setup is convenient for a private personal app, but it is not strong access control. Anyone with your deployed app URL can use the public browser key and write to the same tables. Add Supabase Auth before sharing the app publicly.

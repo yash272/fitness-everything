@@ -1,0 +1,29 @@
+{
+  "name": "fitness-everything",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "eslint .",
+    "db:login": "npx supabase login",
+    "db:link": "npx supabase link",
+    "db:push": "npx supabase db push"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.4",
+    "@vitejs/plugin-react": "^4.3.1",
+    "vite": "^5.4.6",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "lucide-react": "^0.468.0"
+  },
+  "devDependencies": {
+    "eslint": "^9.11.1",
+    "eslint-plugin-react-hooks": "^5.1.0-rc.0",
+    "eslint-plugin-react-refresh": "^0.4.12",
+    "globals": "^15.9.0"
+  }
+}
