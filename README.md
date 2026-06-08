@@ -5,14 +5,14 @@ A mobile-first personal fitness tracker built with React, Supabase, and Vercel.
 ## Features
 
 - Synced workout data across devices
-- Push/Pull/Legs workout tracking
+- Custom workout type tracking
 - Cardio day tracking
 - Daily gym/no-gym status
 - Daily steps
 - Calendar view for workout and rest days
-- Exercises with separate sets, reps, and workout weight in lbs
+- Exercises with weighted sets, bodyweight rep sets, or time-only sets
 - Previous bests for the same exercise
-- PR flags when you beat a previous weight or rep mark
+- PR flags when you beat a previous weighted, rep, or time mark
 - Daily body weight in kg and body fat logs
 - 30/60/90 day weight trend chart
 - Current week and month workout day counts

@@ -4,7 +4,7 @@ create table if not exists public.workouts (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null,
   workout_date date not null,
-  split text not null check (split in ('Push', 'Pull', 'Legs', 'Cardio')),
+  split text not null,
   did_workout boolean not null default false,
   steps integer check (steps >= 0),
   created_at timestamptz not null default now(),
@@ -13,7 +13,6 @@ create table if not exists public.workouts (
 );
 
 alter table public.workouts drop constraint if exists workouts_split_check;
-alter table public.workouts add constraint workouts_split_check check (split in ('Push', 'Pull', 'Legs', 'Cardio'));
 alter table public.workouts add column if not exists did_workout boolean not null default false;
 alter table public.workouts add column if not exists steps integer check (steps >= 0);
 
@@ -22,18 +21,26 @@ create table if not exists public.exercises (
   workout_id uuid not null references public.workouts(id) on delete cascade,
   user_id uuid not null,
   name text not null,
+  tracking_type text not null default 'weighted',
   created_at timestamptz not null default now()
 );
+
+alter table public.exercises add column if not exists tracking_type text not null default 'weighted';
 
 create table if not exists public.exercise_sets (
   id uuid primary key default gen_random_uuid(),
   exercise_id uuid not null references public.exercises(id) on delete cascade,
   user_id uuid not null,
-  reps integer not null check (reps > 0),
-  weight numeric(7, 2) not null check (weight >= 0),
+  reps integer check (reps > 0),
+  weight numeric(7, 2) check (weight >= 0),
+  duration_minutes numeric(7, 2) check (duration_minutes > 0),
   is_pr boolean not null default false,
   logged_at timestamptz not null default now()
 );
+
+alter table public.exercise_sets alter column reps drop not null;
+alter table public.exercise_sets alter column weight drop not null;
+alter table public.exercise_sets add column if not exists duration_minutes numeric(7, 2) check (duration_minutes > 0);
 
 create table if not exists public.body_logs (
   id uuid primary key default gen_random_uuid(),

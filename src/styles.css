@@ -294,6 +294,29 @@ label,
   margin: 8px 0 14px;
 }
 
+.mode-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.mode-grid button {
+  min-height: 42px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #10140e;
+  color: var(--muted);
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.mode-grid button.active {
+  border-color: rgba(255, 184, 74, 0.72);
+  background: #2a2110;
+  color: var(--accent);
+}
+
 .form {
   display: grid;
   gap: 12px;
@@ -543,6 +566,11 @@ canvas {
   grid-template-columns: auto 1fr 1fr auto;
   gap: 8px;
   align-items: end;
+}
+
+.set-input-row.bodyweight,
+.set-input-row.time {
+  grid-template-columns: auto 1fr auto;
 }
 
 .set-input-row > span {

@@ -2,12 +2,19 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Activity, BarChart3, CalendarDays, Dumbbell, Plus, RefreshCw, Scale, Trash2 } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "./supabaseClient";
 
-const SPLITS = ["Push", "Pull", "Legs", "Cardio"];
+const DEFAULT_WORKOUT_TYPES = ["Push", "Pull", "Legs", "Cardio", "Sports", "Mobility"];
 const DEFAULT_EXERCISES = {
   Push: ["Bench Press", "Incline Dumbbell Press", "Shoulder Press", "Lateral Raise", "Triceps Pushdown"],
   Pull: ["Deadlift", "Pull Up", "Lat Pulldown", "Barbell Row", "Bicep Curl"],
   Legs: ["Squat", "Leg Press", "Romanian Deadlift", "Leg Curl", "Calf Raise"],
-  Cardio: ["Treadmill", "Bike", "Rowing", "Stair Climber", "Elliptical"]
+  Cardio: ["Treadmill", "Bike", "Rowing", "Stair Climber", "Elliptical"],
+  Sports: ["Badminton", "Basketball", "Soccer", "Tennis"],
+  Mobility: ["Stretching", "Yoga", "Warmup"]
+};
+const TRACKING_MODES = {
+  weighted: "Weighted",
+  bodyweight: "Reps",
+  time: "Time"
 };
 
 const todayKey = () => dateKey(new Date());
@@ -36,7 +43,7 @@ function Tracker() {
   const [calendarMonth, setCalendarMonth] = useState(startOfMonth(new Date()));
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [exerciseForm, setExerciseForm] = useState({ name: "", sets: [{ reps: "10", weight: "" }] });
+  const [exerciseForm, setExerciseForm] = useState({ name: "", trackingType: "weighted", sets: [{ reps: "10", weight: "", duration: "" }] });
   const [bodyForm, setBodyForm] = useState({ weight: "", bodyFat: "" });
   const [notice, setNotice] = useState("");
 
@@ -46,13 +53,20 @@ function Tracker() {
     workouts.forEach((workout) => workout.exercises?.forEach((exercise) => names.add(exercise.name)));
     return [...names].sort((a, b) => a.localeCompare(b));
   }, [workouts]);
+  const workoutTypes = useMemo(() => {
+    const types = new Set(DEFAULT_WORKOUT_TYPES);
+    workouts.forEach((workout) => {
+      if (workout.split) types.add(workout.split);
+    });
+    return [...types].sort((a, b) => a.localeCompare(b));
+  }, [workouts]);
   const recentPrs = useMemo(() => {
     const prs = [];
     workouts.forEach((workout) => {
       workout.exercises?.forEach((exercise) => {
         exercise.exercise_sets?.forEach((set) => {
           if (set.is_pr) {
-            prs.push({ ...set, exercise: exercise.name, split: workout.split, date: workout.workout_date });
+            prs.push({ ...set, exercise: exercise.name, trackingType: exercise.tracking_type || "weighted", split: workout.split, date: workout.workout_date });
           }
         });
       });
@@ -65,7 +79,7 @@ function Tracker() {
     const [workoutResult, bodyResult] = await Promise.all([
       supabase
         .from("workouts")
-        .select("id,user_id,workout_date,split,did_workout,steps,created_at,updated_at,exercises(id,user_id,name,created_at,exercise_sets(id,user_id,reps,weight,is_pr,logged_at))")
+        .select("id,user_id,workout_date,split,did_workout,steps,created_at,updated_at,exercises(id,user_id,name,tracking_type,created_at,exercise_sets(id,user_id,reps,weight,duration_minutes,is_pr,logged_at))")
         .eq("user_id", userId)
         .order("workout_date", { ascending: false })
         .limit(120),
@@ -111,7 +125,7 @@ function Tracker() {
     const { data, error } = await supabase
       .from("workouts")
       .insert({ user_id: userId, workout_date: date, split, ...fields })
-      .select("id,user_id,workout_date,split,did_workout,steps,created_at,updated_at,exercises(id,user_id,name,created_at,exercise_sets(id,user_id,reps,weight,is_pr,logged_at))")
+      .select("id,user_id,workout_date,split,did_workout,steps,created_at,updated_at,exercises(id,user_id,name,tracking_type,created_at,exercise_sets(id,user_id,reps,weight,duration_minutes,is_pr,logged_at))")
       .single();
 
     if (error) throw error;
@@ -124,16 +138,17 @@ function Tracker() {
     return ensureWorkoutForDate(todayKey(), split, fields);
   }
 
-  function bestBefore(exerciseName) {
+  function bestBefore(exerciseName, trackingType = "weighted") {
     let best = null;
     workouts.forEach((workout) => {
       if (workout.workout_date >= todayKey()) return;
       workout.exercises?.forEach((exercise) => {
         if (exercise.name.toLowerCase() !== exerciseName.toLowerCase()) return;
+        const type = exercise.tracking_type || "weighted";
+        if (type !== trackingType) return;
         exercise.exercise_sets?.forEach((set) => {
-          const weight = Number(set.weight);
-          if (!best || weight > best.weight || (weight === best.weight && set.reps > best.reps)) {
-            best = { weight, reps: set.reps, date: workout.workout_date };
+          if (isBetterSet(set, best, trackingType)) {
+            best = { ...set, date: workout.workout_date };
           }
         });
       });
@@ -144,21 +159,22 @@ function Tracker() {
   async function addExercise(event) {
     event.preventDefault();
     const name = exerciseForm.name.trim();
+    const trackingType = exerciseForm.trackingType;
     const setRowsInput = exerciseForm.sets
-      .map((set) => ({ reps: Number(set.reps), weight: Number(set.weight) }))
-      .filter((set) => set.reps > 0 && !Number.isNaN(set.weight));
+      .map((set) => normalizeSetInput(set, trackingType))
+      .filter(Boolean);
     if (!name || !setRowsInput.length) return;
 
     setSaving(true);
     setNotice("");
     try {
       const workout = await ensureTodayWorkout(selectedSplit, { did_workout: true });
-      const previous = bestBefore(name);
+      const previous = bestBefore(name, trackingType);
 
       const { data: exercise, error: exerciseError } = await supabase
         .from("exercises")
-        .insert({ workout_id: workout.id, user_id: userId, name })
-        .select("id,user_id,name,created_at")
+        .insert({ workout_id: workout.id, user_id: userId, name, tracking_type: trackingType })
+        .select("id,user_id,name,tracking_type,created_at")
         .single();
       if (exerciseError) throw exerciseError;
 
@@ -167,17 +183,18 @@ function Tracker() {
         user_id: userId,
         reps: set.reps,
         weight: set.weight,
-        is_pr: Boolean(previous) && (set.weight > previous.weight || (set.weight === previous.weight && set.reps > previous.reps))
+        duration_minutes: set.duration_minutes,
+        is_pr: Boolean(previous) && isBetterSet(set, previous, trackingType)
       }));
       const { data: sets, error: setError } = await supabase
         .from("exercise_sets")
         .insert(setRows)
-        .select("id,user_id,reps,weight,is_pr,logged_at");
+        .select("id,user_id,reps,weight,duration_minutes,is_pr,logged_at");
       if (setError) throw setError;
 
       const nextExercise = { ...exercise, exercise_sets: sets };
       setWorkouts((items) => upsertExercise(items, workout.id, nextExercise));
-      setExerciseForm({ name: "", sets: [{ reps: "10", weight: "" }] });
+      setExerciseForm({ name: "", trackingType, sets: [defaultSetForMode(trackingType)] });
     } catch (error) {
       setNotice(error.message);
     } finally {
@@ -188,14 +205,19 @@ function Tracker() {
   async function repeatSet(exercise) {
     const last = exercise.exercise_sets?.at(-1);
     if (!last) return;
-    const previous = bestBefore(exercise.name);
-    const weight = Number(last.weight);
-    const isPr = Boolean(previous) && (weight > previous.weight || (weight === previous.weight && last.reps > previous.reps));
+    const trackingType = exercise.tracking_type || "weighted";
+    const previous = bestBefore(exercise.name, trackingType);
+    const repeated = {
+      reps: last.reps,
+      weight: last.weight,
+      duration_minutes: last.duration_minutes
+    };
+    const isPr = Boolean(previous) && isBetterSet(repeated, previous, trackingType);
     setSaving(true);
     const { data, error } = await supabase
       .from("exercise_sets")
-      .insert({ exercise_id: exercise.id, user_id: userId, reps: last.reps, weight, is_pr: isPr })
-      .select("id,user_id,reps,weight,is_pr,logged_at")
+      .insert({ exercise_id: exercise.id, user_id: userId, ...repeated, is_pr: isPr })
+      .select("id,user_id,reps,weight,duration_minutes,is_pr,logged_at")
       .single();
 
     if (error) setNotice(error.message);
@@ -343,6 +365,7 @@ function Tracker() {
           setExerciseForm={setExerciseForm}
           addExercise={addExercise}
           exerciseNames={exerciseNames}
+          workoutTypes={workoutTypes}
           todayWorkout={todayWorkout}
           bestBefore={bestBefore}
           repeatSet={repeatSet}
@@ -394,7 +417,7 @@ function Dashboard({ workoutSets, todayWorkout, todayPrs, latestBody, weekDays, 
                 <strong>{pr.exercise}</strong>
                 <span>{formatDate(pr.date)} - {pr.split}</span>
               </div>
-              <b>{Number(pr.weight)} lbs x {pr.reps}</b>
+              <b>{formatSet(pr, pr.trackingType)}</b>
             </div>
           )) : <Empty text="Beat a previous weight or rep mark and it will show here." />}
         </div>
@@ -522,11 +545,11 @@ function DayWorkoutDetails({ workout, bodyLog }) {
           <h3>{exercise.name}</h3>
           <div>
             {exercise.exercise_sets.map((set, index) => (
-              <span key={set.id}>{index + 1}. {Number(set.weight)} lbs x {set.reps}{set.is_pr ? " PR" : ""}</span>
+              <span key={set.id}>{index + 1}. {formatSet(set, exercise.tracking_type || "weighted")}{set.is_pr ? " PR" : ""}</span>
             ))}
           </div>
         </article>
-      )) : <Empty text={workout.split === "Cardio" ? "Cardio day saved. No lift sets logged." : "Gym day saved. No exercise sets logged yet."} />}
+      )) : <Empty text={`${workout.split} day saved. No exercise sets logged yet.`} />}
     </div>
   );
 }
@@ -563,7 +586,18 @@ function CalendarGrid({ month, workouts, bodyLogs, selectedDate, setSelectedDate
   );
 }
 
-function WorkoutView({ selectedSplit, changeSplit, exerciseForm, setExerciseForm, addExercise, exerciseNames, todayWorkout, bestBefore, repeatSet, deleteExercise, saving }) {
+function WorkoutView({ selectedSplit, changeSplit, exerciseForm, setExerciseForm, addExercise, exerciseNames, workoutTypes, todayWorkout, bestBefore, repeatSet, deleteExercise, saving }) {
+  const [typeDraft, setTypeDraft] = useState(selectedSplit);
+
+  useEffect(() => {
+    setTypeDraft(selectedSplit);
+  }, [selectedSplit]);
+
+  function saveWorkoutType() {
+    const next = typeDraft.trim();
+    if (next && next !== selectedSplit) changeSplit(next);
+  }
+
   function updateSet(index, field, value) {
     setExerciseForm({
       ...exerciseForm,
@@ -572,7 +606,7 @@ function WorkoutView({ selectedSplit, changeSplit, exerciseForm, setExerciseForm
   }
 
   function addSetRow() {
-    const last = exerciseForm.sets.at(-1) || { reps: "10", weight: "" };
+    const last = exerciseForm.sets.at(-1) || { reps: "10", weight: "", duration: "" };
     setExerciseForm({ ...exerciseForm, sets: [...exerciseForm.sets, { ...last }] });
   }
 
@@ -585,8 +619,27 @@ function WorkoutView({ selectedSplit, changeSplit, exerciseForm, setExerciseForm
 
   return (
     <>
-      <section className="split-grid">
-        {SPLITS.map((split) => <button key={split} className={selectedSplit === split ? "active" : ""} onClick={() => changeSplit(split)}>{split}</button>)}
+      <section className="panel-section form">
+        <h2>Workout Type</h2>
+        <label>
+          Type
+          <input
+            value={typeDraft}
+            list="workout-type-options"
+            placeholder="Push, Badminton, Run..."
+            onChange={(event) => setTypeDraft(event.target.value)}
+            onBlur={saveWorkoutType}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                event.currentTarget.blur();
+              }
+            }}
+          />
+          <datalist id="workout-type-options">
+            {workoutTypes.map((type) => <option key={type} value={type} />)}
+          </datalist>
+        </label>
       </section>
 
       <form className="panel-section form" onSubmit={addExercise}>
@@ -598,18 +651,40 @@ function WorkoutView({ selectedSplit, changeSplit, exerciseForm, setExerciseForm
             {exerciseNames.map((name) => <option key={name} value={name} />)}
           </datalist>
         </label>
+        <div className="mode-grid">
+          {Object.entries(TRACKING_MODES).map(([mode, label]) => (
+            <button
+              type="button"
+              key={mode}
+              className={exerciseForm.trackingType === mode ? "active" : ""}
+              onClick={() => setExerciseForm({ ...exerciseForm, trackingType: mode, sets: [defaultSetForMode(mode)] })}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
         <div className="set-editor">
           {exerciseForm.sets.map((set, index) => (
-            <div className="set-input-row" key={index}>
+            <div className={`set-input-row ${exerciseForm.trackingType}`} key={index}>
               <span>{index + 1}</span>
-              <label>
-                Reps
-                <input type="number" min="1" inputMode="numeric" value={set.reps} onChange={(event) => updateSet(index, "reps", event.target.value)} />
-              </label>
-              <label>
-                Lbs
-                <input type="number" min="0" step="2.5" inputMode="decimal" value={set.weight} placeholder="135" onChange={(event) => updateSet(index, "weight", event.target.value)} />
-              </label>
+              {exerciseForm.trackingType !== "time" ? (
+                <label>
+                  Reps
+                  <input type="number" min="1" inputMode="numeric" value={set.reps} onChange={(event) => updateSet(index, "reps", event.target.value)} />
+                </label>
+              ) : null}
+              {exerciseForm.trackingType === "weighted" ? (
+                <label>
+                  Lbs
+                  <input type="number" min="0" step="2.5" inputMode="decimal" value={set.weight} placeholder="135" onChange={(event) => updateSet(index, "weight", event.target.value)} />
+                </label>
+              ) : null}
+              {exerciseForm.trackingType === "time" ? (
+                <label>
+                  Minutes
+                  <input type="number" min="1" step="1" inputMode="numeric" value={set.duration} placeholder="45" onChange={(event) => updateSet(index, "duration", event.target.value)} />
+                </label>
+              ) : null}
               <button type="button" className="danger icon-only" onClick={() => removeSetRow(index)} disabled={exerciseForm.sets.length === 1} aria-label={`Remove set ${index + 1}`} title={`Remove set ${index + 1}`}>
                 <Trash2 size={16} />
               </button>
@@ -624,14 +699,15 @@ function WorkoutView({ selectedSplit, changeSplit, exerciseForm, setExerciseForm
         <h2>Today's Workout</h2>
         <div className="exercise-list">
           {todayWorkout?.exercises?.length ? todayWorkout.exercises.map((exercise) => {
-            const previous = bestBefore(exercise.name);
+            const trackingType = exercise.tracking_type || "weighted";
+            const previous = bestBefore(exercise.name, trackingType);
             const prCount = exercise.exercise_sets.filter((set) => set.is_pr).length;
             return (
               <article className="exercise-card" key={exercise.id}>
                 <div className="exercise-head">
                   <div>
                     <h3>{exercise.name}</h3>
-                    <p>{previous ? `Previous best: ${previous.weight} lbs x ${previous.reps} on ${formatDate(previous.date)}` : "No previous session yet"}</p>
+                    <p>{previous ? `Previous best: ${formatSet(previous, trackingType)} on ${formatDate(previous.date)}` : "No previous session yet"}</p>
                   </div>
                   {prCount ? <span className="badge">PR</span> : null}
                 </div>
@@ -639,7 +715,7 @@ function WorkoutView({ selectedSplit, changeSplit, exerciseForm, setExerciseForm
                   {exercise.exercise_sets.map((set, index) => (
                     <div className="set-row" key={set.id}>
                       <span>{index + 1}</span>
-                      <b>{Number(set.weight)} lbs x {set.reps}</b>
+                      <b>{formatSet(set, trackingType)}</b>
                       <em>{set.is_pr ? "NEW PR" : ""}</em>
                     </div>
                   ))}
@@ -841,6 +917,54 @@ function dailyMeta(workout, bodyLog) {
     if (bodyLog.body_fat) parts.push(`${bodyLog.body_fat}% body fat`);
   }
   return parts.join(" - ");
+}
+
+function defaultSetForMode(mode) {
+  if (mode === "time") return { reps: "", weight: "", duration: "30" };
+  if (mode === "bodyweight") return { reps: "10", weight: "", duration: "" };
+  return { reps: "10", weight: "", duration: "" };
+}
+
+function normalizeSetInput(set, trackingType) {
+  if (trackingType === "time") {
+    const duration = Number(set.duration);
+    if (!duration || Number.isNaN(duration)) return null;
+    return { reps: null, weight: null, duration_minutes: duration };
+  }
+
+  const reps = Number(set.reps);
+  if (!reps || Number.isNaN(reps)) return null;
+
+  if (trackingType === "bodyweight") {
+    return { reps, weight: null, duration_minutes: null };
+  }
+
+  const weight = Number(set.weight);
+  if (set.weight === "" || Number.isNaN(weight)) return null;
+  return { reps, weight, duration_minutes: null };
+}
+
+function isBetterSet(candidate, currentBest, trackingType) {
+  if (!candidate) return false;
+  if (!currentBest) return true;
+
+  if (trackingType === "time") {
+    return Number(candidate.duration_minutes || 0) > Number(currentBest.duration_minutes || 0);
+  }
+
+  if (trackingType === "bodyweight") {
+    return Number(candidate.reps || 0) > Number(currentBest.reps || 0);
+  }
+
+  const candidateWeight = Number(candidate.weight || 0);
+  const bestWeight = Number(currentBest.weight || 0);
+  return candidateWeight > bestWeight || (candidateWeight === bestWeight && Number(candidate.reps || 0) > Number(currentBest.reps || 0));
+}
+
+function formatSet(set, trackingType = "weighted") {
+  if (trackingType === "time") return `${Number(set.duration_minutes || 0)} min`;
+  if (trackingType === "bodyweight") return `${set.reps} reps`;
+  return `${Number(set.weight || 0)} lbs x ${set.reps}`;
 }
 
 function startOfMonth(date) {
