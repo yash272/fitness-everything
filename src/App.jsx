@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Activity, BarChart3, CalendarDays, Dumbbell, Plus, RefreshCw, Scale, Trash2 } from "lucide-react";
+import { Activity, BarChart3, CalendarDays, Dumbbell, Moon, Plus, RefreshCw, Scale, Sun, Trash2 } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "./supabaseClient";
 
 const DEFAULT_WORKOUT_TYPES = ["Push", "Pull", "Legs", "Cardio", "Sports", "Mobility"];
@@ -35,6 +35,7 @@ function App() {
 function Tracker() {
   const userId = import.meta.env.VITE_PERSONAL_USER_ID;
   const [activeView, setActiveView] = useState("dashboard");
+  const [theme, setTheme] = useState(() => localStorage.getItem("fitness-theme") || "dark");
   const [selectedSplit, setSelectedSplit] = useState("Push");
   const [range, setRange] = useState(30);
   const [workouts, setWorkouts] = useState([]);
@@ -46,6 +47,11 @@ function Tracker() {
   const [exerciseForm, setExerciseForm] = useState({ name: "", trackingType: "weighted", sets: [{ reps: "10", weight: "", duration: "" }] });
   const [bodyForm, setBodyForm] = useState({ weight: "", bodyFat: "" });
   const [notice, setNotice] = useState("");
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    localStorage.setItem("fitness-theme", theme);
+  }, [theme]);
 
   const todayWorkout = useMemo(() => workouts.find((workout) => workout.workout_date === todayKey()), [workouts]);
   const exerciseNames = useMemo(() => {
@@ -314,7 +320,17 @@ function Tracker() {
           <p className="eyebrow">Fitness Everything</p>
           <h1>Track the next set.</h1>
         </div>
-        <div className="date-chip">{new Date().toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}</div>
+        <div className="top-actions">
+          <button
+            className="icon-button"
+            onClick={() => setTheme((current) => current === "dark" ? "light" : "dark")}
+            aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+            title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+          >
+            {theme === "dark" ? <Sun size={19} /> : <Moon size={19} />}
+          </button>
+          <div className="date-chip">{new Date().toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}</div>
+        </div>
       </header>
 
       <nav className="tabs" aria-label="Primary">
@@ -340,6 +356,7 @@ function Tracker() {
           setRange={setRange}
           recentPrs={recentPrs}
           todaySteps={todaySteps}
+          theme={theme}
         />
       )}
 
@@ -387,7 +404,7 @@ function Tracker() {
   );
 }
 
-function Dashboard({ workoutSets, todayWorkout, todayPrs, latestBody, weekDays, monthDays, bodyLogs, range, setRange, recentPrs, todaySteps }) {
+function Dashboard({ workoutSets, todayWorkout, todayPrs, latestBody, weekDays, monthDays, bodyLogs, range, setRange, recentPrs, todaySteps, theme }) {
   return (
     <>
       <section className="stat-grid">
@@ -405,7 +422,7 @@ function Dashboard({ workoutSets, todayWorkout, todayPrs, latestBody, weekDays, 
             {[30, 60, 90].map((days) => <button key={days} className={range === days ? "active" : ""} onClick={() => setRange(days)}>{days}D</button>)}
           </div>
         </div>
-        <WeightChart logs={bodyLogs} range={range} />
+        <WeightChart logs={bodyLogs} range={range} theme={theme} />
       </section>
 
       <section className="panel-section">
@@ -769,7 +786,7 @@ function BodyView({ bodyForm, setBodyForm, saveBody, bodyLogs, saving }) {
   );
 }
 
-function WeightChart({ logs, range }) {
+function WeightChart({ logs, range, theme }) {
   const canvasRef = useRef(null);
 
   useEffect(() => {
@@ -777,16 +794,24 @@ function WeightChart({ logs, range }) {
     const ctx = canvas.getContext("2d");
     const width = canvas.width;
     const height = canvas.height;
+    const styles = getComputedStyle(document.documentElement);
+    const chartBg = styles.getPropertyValue("--chart-bg").trim() || "#141820";
+    const chartGrid = styles.getPropertyValue("--chart-grid").trim() || "#2a303c";
+    const chartLine = styles.getPropertyValue("--chart-line").trim() || "#7dd3fc";
+    const chartPoint = styles.getPropertyValue("--chart-point").trim() || "#a7f3d0";
+    const chartText = styles.getPropertyValue("--chart-text").trim() || "#cbd3df";
+    const chartMuted = styles.getPropertyValue("--chart-muted").trim() || "#9aa4b2";
+
     ctx.clearRect(0, 0, width, height);
-    ctx.fillStyle = "#141820";
+    ctx.fillStyle = chartBg;
     ctx.fillRect(0, 0, width, height);
 
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - range + 1);
     const points = logs.filter((entry) => entry.log_date >= dateKey(cutoff));
 
-    ctx.fillStyle = "#9aa4b2";
-    ctx.font = "24px Inter, sans-serif";
+    ctx.fillStyle = chartMuted;
+    ctx.font = "24px Sora, sans-serif";
     if (points.length < 2) {
       ctx.fillText("Log at least 2 weigh-ins", 28, 68);
       return;
@@ -799,7 +824,7 @@ function WeightChart({ logs, range }) {
     const xFor = (index) => pad + (index / (points.length - 1)) * (width - pad * 2);
     const yFor = (value) => height - pad - ((value - min) / (max - min || 1)) * (height - pad * 2);
 
-    ctx.strokeStyle = "#2a303c";
+    ctx.strokeStyle = chartGrid;
     ctx.lineWidth = 2;
     for (let i = 0; i < 4; i += 1) {
       const y = pad + (i / 3) * (height - pad * 2);
@@ -809,7 +834,7 @@ function WeightChart({ logs, range }) {
       ctx.stroke();
     }
 
-    ctx.strokeStyle = "#7dd3fc";
+    ctx.strokeStyle = chartLine;
     ctx.lineWidth = 5;
     ctx.lineJoin = "round";
     ctx.lineCap = "round";
@@ -823,17 +848,17 @@ function WeightChart({ logs, range }) {
     ctx.stroke();
 
     points.forEach((point, index) => {
-      ctx.fillStyle = "#a7f3d0";
+      ctx.fillStyle = chartPoint;
       ctx.beginPath();
       ctx.arc(xFor(index), yFor(Number(point.weight)), 6, 0, Math.PI * 2);
       ctx.fill();
     });
 
-    ctx.fillStyle = "#cbd3df";
-    ctx.font = "22px Inter, sans-serif";
+    ctx.fillStyle = chartText;
+    ctx.font = "22px Sora, sans-serif";
     ctx.fillText(`${max.toFixed(1)} kg`, pad, 28);
     ctx.fillText(`${min.toFixed(1)} kg`, pad, height - 12);
-  }, [logs, range]);
+  }, [logs, range, theme]);
 
   return (
     <div className="chart">
