@@ -1,78 +1,63 @@
-@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600;700&family=Sora:wght@400;600;700;800&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&family=Sora:wght@400;500;600;700;800&display=swap");
 
 :root {
   color-scheme: dark;
-  --bg: #090b0a;
-  --bg-2: #11130f;
-  --panel: #151811;
-  --panel-2: #1d2118;
-  --panel-3: #0f120d;
-  --line: #353a2a;
-  --line-strong: #596047;
-  --text: #f6f1df;
-  --soft: #d5ccb0;
-  --muted: #8e927d;
-  --accent: #ffb84a;
-  --accent-2: #9ce6b8;
-  --blue: #8cc8ff;
-  --warning: #f2ce62;
-  --danger: #ff7a6b;
-  --shadow: 0 18px 45px rgba(0, 0, 0, 0.38);
-  --inset: inset 0 1px 0 rgba(255, 255, 255, 0.04);
-  --body-grid: rgba(255, 255, 255, 0.025);
-  --body-grid-2: rgba(255, 255, 255, 0.02);
-  --body-glow: rgba(255, 184, 74, 0.12);
-  --body-gradient: linear-gradient(155deg, #090b0a 0%, #11130f 54%, #070807 100%);
-  --panel-sheen: rgba(255, 255, 255, 0.035);
-  --control-bg: #0c0f0b;
-  --surface-gradient: linear-gradient(180deg, var(--panel), var(--panel-3));
-  --date-gradient: linear-gradient(180deg, #1b1f17, #10130e);
-  --tab-gradient: linear-gradient(180deg, #171b13, #10130d);
-  --tab-active-gradient: linear-gradient(180deg, #322711, #19150c);
-  --chart-bg: #141820;
-  --chart-grid: #2a303c;
-  --chart-line: #ffb84a;
-  --chart-point: #9ce6b8;
-  --chart-text: #f6f1df;
-  --chart-muted: #8e927d;
+  --background: #0a0a0a;
+  --surface: #131313;
+  --surface-card: #171717;
+  --surface-low: #1c1b1b;
+  --surface-container: #201f1f;
+  --surface-high: #2a2a2a;
+  --surface-highest: #353534;
+  --line: #262626;
+  --line-strong: #4f4633;
+  --text: #e5e2e1;
+  --white: #ffffff;
+  --muted: #d3c5ac;
+  --muted-2: #9b8f79;
+  --primary: #ffd165;
+  --primary-strong: #f7be1d;
+  --primary-text: #3f2e00;
+  --secondary: #5de6ff;
+  --secondary-text: #00363e;
+  --danger: #f87171;
+  --shadow: none;
+  --chart-bg: #171717;
+  --chart-grid: #353534;
+  --chart-line: #ffd165;
+  --chart-point: #171717;
+  --chart-text: #ffffff;
+  --chart-muted: #d3c5ac;
   font-family: "Sora", ui-sans-serif, system-ui, sans-serif;
 }
 
 :root[data-theme="light"] {
   color-scheme: light;
-  --bg: #f3ead8;
-  --bg-2: #fff8ea;
-  --panel: #fff6e4;
-  --panel-2: #f5e8cf;
-  --panel-3: #eadabd;
-  --line: #c9b88f;
-  --line-strong: #9f8759;
-  --text: #20170d;
-  --soft: #483923;
-  --muted: #7f7159;
-  --accent: #9a5a00;
-  --accent-2: #196b3d;
-  --blue: #1f5d91;
-  --warning: #9a6900;
-  --danger: #a93627;
-  --shadow: 0 18px 38px rgba(77, 54, 22, 0.16);
-  --inset: inset 0 1px 0 rgba(255, 255, 255, 0.78);
-  --body-grid: rgba(91, 68, 29, 0.065);
-  --body-grid-2: rgba(91, 68, 29, 0.045);
-  --body-glow: rgba(154, 90, 0, 0.16);
-  --body-gradient: linear-gradient(155deg, #f3ead8 0%, #fff8ea 52%, #e9dcc1 100%);
-  --panel-sheen: rgba(255, 255, 255, 0.66);
-  --control-bg: #fffaf0;
-  --surface-gradient: linear-gradient(180deg, var(--panel), #f4e6cb);
-  --date-gradient: linear-gradient(180deg, #fff8ea, #efe1c5);
-  --tab-gradient: linear-gradient(180deg, #fff7e8, #eadcc1);
-  --tab-active-gradient: linear-gradient(180deg, #ffd992, #edbd62);
-  --chart-bg: #fff8ea;
-  --chart-grid: #decba5;
-  --chart-line: #9a5a00;
-  --chart-point: #196b3d;
-  --chart-text: #20170d;
-  --chart-muted: #7f7159;
+  --background: #f4f0e6;
+  --surface: #fdf8ec;
+  --surface-card: #ffffff;
+  --surface-low: #f2ead9;
+  --surface-container: #ebe0c9;
+  --surface-high: #e1d3b8;
+  --surface-highest: #cbb990;
+  --line: #d8c8a4;
+  --line-strong: #a58b54;
+  --text: #24201a;
+  --white: #0f0e0c;
+  --muted: #685d49;
+  --muted-2: #84735a;
+  --primary: #9b6b00;
+  --primary-strong: #c89100;
+  --primary-text: #fff8e8;
+  --secondary: #006b7a;
+  --secondary-text: #e8fbff;
+  --danger: #b32828;
+  --chart-bg: #fffaf0;
+  --chart-grid: #d9c9a4;
+  --chart-line: #9b6b00;
+  --chart-point: #fffaf0;
+  --chart-text: #24201a;
+  --chart-muted: #685d49;
 }
 
 * {
@@ -81,18 +66,17 @@
 
 html {
   min-height: 100%;
-  background: var(--bg);
+  background: var(--background);
 }
 
 body {
   margin: 0;
   min-height: 100vh;
   background:
-    linear-gradient(var(--body-grid) 1px, transparent 1px),
-    linear-gradient(90deg, var(--body-grid-2) 1px, transparent 1px),
-    radial-gradient(circle at 50% -10%, var(--body-glow), transparent 42%),
-    var(--body-gradient);
-  background-size: 18px 18px, 18px 18px, auto, auto;
+    linear-gradient(rgba(38, 38, 38, 0.22) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(38, 38, 38, 0.22) 1px, transparent 1px),
+    var(--background);
+  background-size: 40px 40px;
   color: var(--text);
 }
 
@@ -105,7 +89,7 @@ select {
 button {
   border: 0;
   cursor: pointer;
-  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease, color 160ms ease;
+  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease, color 160ms ease, opacity 160ms ease;
 }
 
 button:active {
@@ -117,28 +101,6 @@ button:disabled {
   opacity: 0.48;
 }
 
-.app {
-  width: min(100%, 790px);
-  min-height: 100vh;
-  margin: 0 auto;
-  padding: 18px 14px 96px;
-}
-
-.topbar {
-  display: flex;
-  justify-content: space-between;
-  gap: 14px;
-  align-items: flex-start;
-  padding: 8px 2px 18px;
-}
-
-.top-actions {
-  display: flex;
-  flex: 0 0 auto;
-  gap: 8px;
-  align-items: center;
-}
-
 h1,
 h2,
 h3,
@@ -147,102 +109,184 @@ p {
 }
 
 h1 {
-  max-width: 13ch;
-  font-size: 1.72rem;
-  line-height: 0.98;
+  max-width: 15ch;
+  color: var(--white);
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.08;
   letter-spacing: 0;
 }
 
 h2 {
-  font-size: 0.98rem;
+  color: var(--white);
+  font-size: 1.35rem;
+  font-weight: 600;
+  line-height: 1.2;
   letter-spacing: 0;
 }
 
 h3 {
-  font-size: 0.95rem;
+  color: var(--white);
+  font-size: 0.98rem;
+  font-weight: 700;
   letter-spacing: 0;
 }
 
-.eyebrow,
-label,
-.stat span {
-  color: var(--accent);
-  font-family: "IBM Plex Mono", ui-monospace, monospace;
-  font-size: 0.68rem;
+.app-shell {
+  min-height: 100vh;
+  padding-top: 64px;
+  padding-bottom: 86px;
+}
+
+.app {
+  width: min(100%, 1440px);
+  margin: 0 auto;
+  padding: 32px 16px 0;
+}
+
+.topbar {
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  height: 64px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--surface-highest);
+  background: color-mix(in srgb, var(--background) 94%, transparent);
+  backdrop-filter: blur(16px);
+}
+
+.brand,
+.top-actions,
+.desktop-tabs,
+.hero-row,
+.date-chip,
+.section-head,
+.trend-meta,
+.saved-day,
+.day-summary,
+.row {
+  display: flex;
+  align-items: center;
+}
+
+.brand {
+  gap: 9px;
+  color: var(--primary);
+  text-transform: uppercase;
+}
+
+.brand strong {
+  font-size: 1.35rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.desktop-tabs {
+  align-self: stretch;
+  display: none;
+  gap: 22px;
+}
+
+.desktop-tabs button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 0.72rem;
   font-weight: 700;
   text-transform: uppercase;
 }
 
+.desktop-tabs button.active {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.top-actions {
+  flex: 0 0 auto;
+  gap: 8px;
+}
+
+.desktop-only {
+  display: none;
+}
+
 .icon-button,
 .date-chip {
+  min-width: 42px;
+  height: 42px;
+  border: 1px solid var(--surface-highest);
+  border-radius: 4px;
+  background: var(--surface-container);
+  color: var(--text);
+}
+
+.icon-button {
   display: grid;
   place-items: center;
-  min-width: 44px;
-  height: 44px;
   padding: 0 10px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: var(--date-gradient);
-  box-shadow: var(--inset);
-  color: var(--soft);
-  font-family: "IBM Plex Mono", ui-monospace, monospace;
-  font-size: 0.72rem;
+}
+
+.desktop-only.icon-button {
+  display: none;
+}
+
+.date-chip {
+  gap: 8px;
+  padding: 0 14px;
+  color: var(--white);
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 0.82rem;
   font-weight: 700;
   white-space: nowrap;
 }
 
-.tabs {
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 6px;
-  padding: 9px 0 13px;
-  background: color-mix(in srgb, var(--bg) 92%, transparent);
-  backdrop-filter: blur(16px);
+.hero-row {
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 26px;
 }
 
-.tabs button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  min-height: 44px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: var(--tab-gradient);
-  color: var(--muted);
-  font-size: 0.76rem;
-  font-weight: 800;
+.eyebrow,
+label,
+.stat span,
+.trend-meta span,
+.weekday,
+.saved-pill {
+  color: var(--primary);
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.35;
+  text-transform: uppercase;
 }
 
-.tabs button.active {
-  border-color: rgba(255, 184, 74, 0.78);
-  background: var(--tab-active-gradient);
-  color: var(--text);
-  box-shadow: 0 0 0 1px rgba(255, 184, 74, 0.08), 0 10px 24px rgba(255, 184, 74, 0.1);
-}
-
-.tabs svg {
-  color: currentColor;
+.eyebrow {
+  margin-bottom: 6px;
 }
 
 .notice {
-  margin: 8px 0 12px;
-  padding: 12px;
-  border: 1px solid rgba(255, 184, 74, 0.38);
-  border-radius: 6px;
-  background: color-mix(in srgb, var(--accent) 10%, transparent);
-  color: var(--soft);
-  line-height: 1.4;
+  margin: 0 0 14px;
+  padding: 13px;
+  border: 1px solid color-mix(in srgb, var(--primary) 42%, transparent);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--primary) 10%, transparent);
+  color: var(--text);
+  line-height: 1.45;
 }
 
 .stat-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 9px;
-  padding: 8px 0 16px;
+  gap: 12px;
+  margin-bottom: 12px;
 }
 
 .stat,
@@ -250,107 +294,159 @@ label,
 .auth-panel,
 .exercise-card,
 .row,
-.empty {
+.empty,
+.day-summary,
+.mini-exercise {
   border: 1px solid var(--line);
-  border-radius: 6px;
-  background:
-    linear-gradient(135deg, var(--panel-sheen), transparent 38%),
-    var(--surface-gradient);
-  box-shadow: var(--shadow), var(--inset);
+  border-radius: 8px;
+  background: var(--surface-card);
+}
+
+.stat,
+.panel-section {
+  transition: border-color 160ms ease, transform 160ms ease, background 160ms ease;
 }
 
 .stat {
   position: relative;
-  min-height: 104px;
+  display: flex;
+  min-height: 140px;
+  flex-direction: column;
+  justify-content: space-between;
   overflow: hidden;
-  padding: 13px;
+  padding: 18px;
 }
 
 .stat::after {
-  position: absolute;
-  right: 10px;
-  bottom: 9px;
-  width: 34px;
-  height: 3px;
-  background: var(--accent);
+  width: 40px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--primary);
   content: "";
-  opacity: 0.72;
 }
 
-.stat span,
-.stat strong,
-.stat small {
-  display: block;
+.stat:nth-child(4)::after {
+  background: var(--secondary);
+}
+
+.stat:nth-child(4) strong {
+  color: var(--secondary);
 }
 
 .stat strong {
+  display: block;
   margin-top: 11px;
-  color: var(--text);
-  font-family: "IBM Plex Mono", ui-monospace, monospace;
-  font-size: 1.32rem;
+  color: var(--white);
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: clamp(1.55rem, 6vw, 3rem);
+  font-weight: 700;
   line-height: 1;
 }
 
 .stat small {
-  margin-top: 8px;
+  display: block;
+  margin-top: 12px;
   color: var(--muted);
-  font-size: 0.74rem;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 0.76rem;
   line-height: 1.35;
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
 }
 
 .panel-section {
-  margin: 0 0 14px;
-  padding: 14px;
+  margin: 0 0 12px;
+  padding: 18px;
 }
 
 .section-head {
-  display: flex;
   justify-content: space-between;
-  gap: 12px;
-  align-items: center;
-  margin-bottom: 11px;
+  gap: 14px;
+  margin-bottom: 18px;
 }
 
 .section-head p {
-  margin-top: 5px;
+  margin-top: 6px;
   color: var(--muted);
+  font-family: "JetBrains Mono", ui-monospace, monospace;
   font-size: 0.78rem;
-  line-height: 1.35;
+  line-height: 1.45;
 }
 
-.segmented,
-.split-grid {
-  display: grid;
-  gap: 7px;
+.trend-panel {
+  min-width: 0;
+}
+
+.trend-meta {
+  gap: 32px;
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid var(--surface-highest);
+}
+
+.trend-meta strong {
+  display: block;
+  margin-top: 5px;
+  color: var(--white);
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 0.9rem;
+}
+
+.pr-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.pr-panel .list {
+  max-height: 458px;
+  overflow-y: auto;
+  padding-right: 3px;
+}
+
+.pr-action {
+  width: 100%;
+  margin-top: auto;
 }
 
 .segmented {
+  display: grid;
   grid-template-columns: repeat(3, 1fr);
   min-width: 168px;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--surface-highest);
+  border-radius: 6px;
+  background: var(--surface-container);
 }
 
 .segmented button,
-.split-grid button {
-  min-height: 39px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: var(--control-bg);
+.split-grid button,
+.mode-grid button {
+  min-height: 36px;
+  border-radius: 4px;
+  background: transparent;
   color: var(--muted);
-  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
   font-size: 0.72rem;
   font-weight: 700;
+  text-transform: uppercase;
 }
 
 .segmented button.active,
-.split-grid button.active {
-  border-color: rgba(156, 230, 184, 0.72);
-  background: color-mix(in srgb, var(--accent-2) 14%, var(--control-bg));
-  color: var(--accent-2);
-  box-shadow: 0 0 0 1px rgba(156, 230, 184, 0.1);
+.split-grid button.active,
+.mode-grid button.active {
+  background: var(--primary);
+  color: var(--primary-text);
 }
 
 .split-grid {
+  display: grid;
   grid-template-columns: repeat(4, 1fr);
+  gap: 7px;
   margin: 8px 0 14px;
 }
 
@@ -358,23 +454,6 @@ label,
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 7px;
-}
-
-.mode-grid button {
-  min-height: 42px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: var(--control-bg);
-  color: var(--muted);
-  font-family: "IBM Plex Mono", ui-monospace, monospace;
-  font-size: 0.7rem;
-  font-weight: 700;
-}
-
-.mode-grid button.active {
-  border-color: rgba(255, 184, 74, 0.72);
-  background: color-mix(in srgb, var(--accent) 18%, var(--control-bg));
-  color: var(--accent);
 }
 
 .form {
@@ -390,30 +469,29 @@ label,
 
 label {
   display: grid;
-  gap: 6px;
+  gap: 7px;
 }
 
 input,
 select {
   width: 100%;
   min-height: 46px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
+  border: 1px solid var(--surface-highest);
+  border-radius: 4px;
   padding: 10px 11px;
-  background: var(--control-bg);
-  color: var(--text);
+  background: var(--surface);
+  color: var(--white);
   outline: none;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
 }
 
 input::placeholder {
-  color: #5f644f;
+  color: var(--muted-2);
 }
 
 input:focus,
 select:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(255, 184, 74, 0.15);
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 16%, transparent);
 }
 
 .three-fields {
@@ -435,33 +513,43 @@ select:focus {
 
 .primary,
 .secondary,
-.danger {
+.danger,
+.link-button {
   display: inline-flex;
-  justify-content: center;
   align-items: center;
+  justify-content: center;
   gap: 8px;
   min-height: 46px;
-  border-radius: 6px;
-  padding: 0 12px;
-  font-weight: 900;
+  border-radius: 4px;
+  padding: 0 13px;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-transform: uppercase;
 }
 
 .primary {
-  background: linear-gradient(180deg, #ffc46c, #f39b25);
-  color: #171006;
-  box-shadow: 0 10px 22px rgba(243, 155, 37, 0.18);
+  background: var(--primary);
+  color: var(--primary-text);
 }
 
 .secondary {
-  border: 1px solid var(--line);
-  background: var(--control-bg);
-  color: var(--soft);
+  border: 1px solid var(--surface-highest);
+  background: var(--surface-container);
+  color: var(--text);
 }
 
 .danger {
-  border: 1px solid rgba(255, 122, 107, 0.52);
-  background: color-mix(in srgb, var(--danger) 8%, transparent);
-  color: #ffc0b8;
+  border: 1px solid color-mix(in srgb, var(--danger) 52%, transparent);
+  background: color-mix(in srgb, var(--danger) 9%, transparent);
+  color: var(--danger);
+}
+
+.link-button {
+  min-height: 34px;
+  padding: 0;
+  background: transparent;
+  color: var(--primary);
 }
 
 .icon-only {
@@ -475,11 +563,11 @@ select:focus {
 }
 
 .chart {
-  height: 220px;
+  height: 260px;
   overflow: hidden;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: var(--control-bg);
+  border-left: 1px solid var(--surface-highest);
+  border-bottom: 1px solid var(--surface-highest);
+  background: var(--chart-bg);
 }
 
 canvas {
@@ -496,12 +584,10 @@ canvas {
 }
 
 .row {
-  display: grid;
-  grid-template-columns: 1fr auto;
+  justify-content: space-between;
   gap: 10px;
-  align-items: center;
-  padding: 12px;
-  box-shadow: var(--inset);
+  padding: 14px;
+  background: var(--surface-low);
 }
 
 .row strong,
@@ -513,13 +599,15 @@ canvas {
 .exercise-head p {
   margin-top: 5px;
   color: var(--muted);
-  font-size: 0.78rem;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 0.72rem;
   line-height: 1.35;
+  text-transform: uppercase;
 }
 
 .row b {
-  color: var(--accent-2);
-  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  color: var(--primary);
+  font-family: "JetBrains Mono", ui-monospace, monospace;
   font-size: 0.78rem;
   white-space: nowrap;
 }
@@ -533,21 +621,21 @@ canvas {
   grid-template-columns: 1fr auto;
   gap: 10px;
   align-items: start;
-  padding: 13px;
-  background: linear-gradient(90deg, var(--panel-2), var(--control-bg));
+  padding: 14px;
   border-bottom: 1px solid var(--line);
+  background: var(--surface-low);
 }
 
 .badge {
   display: inline-flex;
   align-items: center;
   min-height: 26px;
-  padding: 0 8px;
-  border: 1px solid rgba(255, 184, 74, 0.34);
+  padding: 0 9px;
+  border: 1px solid color-mix(in srgb, var(--primary) 34%, transparent);
   border-radius: 999px;
-  background: color-mix(in srgb, var(--accent) 14%, transparent);
-  color: #ffdaa0;
-  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  background: color-mix(in srgb, var(--primary) 14%, transparent);
+  color: var(--primary);
+  font-family: "JetBrains Mono", ui-monospace, monospace;
   font-size: 0.68rem;
   font-weight: 700;
   white-space: nowrap;
@@ -556,7 +644,7 @@ canvas {
 .sets {
   display: grid;
   gap: 8px;
-  padding: 12px 13px;
+  padding: 12px 14px;
 }
 
 .set-row {
@@ -571,10 +659,10 @@ canvas {
 .set-input-row > span {
   display: grid;
   place-items: center;
-  border-radius: 6px;
-  background: var(--panel-2);
-  color: var(--accent);
-  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  border-radius: 4px;
+  background: var(--surface-container);
+  color: var(--primary);
+  font-family: "JetBrains Mono", ui-monospace, monospace;
   font-size: 0.76rem;
   font-weight: 700;
 }
@@ -585,13 +673,13 @@ canvas {
 }
 
 .set-row b {
-  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
   font-size: 0.9rem;
 }
 
 .set-row em {
-  color: var(--warning);
-  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  color: var(--secondary);
+  font-family: "JetBrains Mono", ui-monospace, monospace;
   font-size: 0.7rem;
   font-style: normal;
   font-weight: 700;
@@ -601,7 +689,7 @@ canvas {
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 8px;
-  padding: 0 13px 13px;
+  padding: 0 14px 14px;
 }
 
 .card-actions .danger {
@@ -613,7 +701,6 @@ canvas {
   padding: 18px 14px;
   color: var(--muted);
   line-height: 1.45;
-  box-shadow: var(--inset);
 }
 
 .set-editor {
@@ -646,18 +733,13 @@ canvas {
 
 .day-summary,
 .mini-exercise {
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: var(--control-bg);
   padding: 12px;
-  box-shadow: var(--inset);
+  background: var(--surface);
 }
 
 .day-summary {
-  display: grid;
-  grid-template-columns: 1fr auto;
+  justify-content: space-between;
   gap: 10px;
-  align-items: center;
 }
 
 .day-summary.rest {
@@ -686,8 +768,8 @@ canvas {
 }
 
 .mini-exercise span {
-  color: var(--soft);
-  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  color: var(--text);
+  font-family: "JetBrains Mono", ui-monospace, monospace;
   font-size: 0.82rem;
 }
 
@@ -699,42 +781,34 @@ canvas {
 
 .toggle-row button {
   min-height: 43px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: var(--control-bg);
+  border: 1px solid var(--surface-highest);
+  border-radius: 4px;
+  background: var(--surface);
   color: var(--muted);
   font-weight: 900;
 }
 
 .toggle-row button.active {
-  border-color: rgba(156, 230, 184, 0.7);
-  background: color-mix(in srgb, var(--accent-2) 14%, var(--control-bg));
-  color: var(--accent-2);
+  border-color: var(--secondary);
+  background: color-mix(in srgb, var(--secondary) 14%, var(--surface));
+  color: var(--secondary);
 }
 
 .daily-state.saved {
-  border-color: rgba(156, 230, 184, 0.5);
-  background:
-    linear-gradient(135deg, color-mix(in srgb, var(--accent-2) 9%, transparent), transparent 42%),
-    var(--surface-gradient);
+  border-color: color-mix(in srgb, var(--secondary) 46%, var(--line));
 }
 
 .daily-state.unsaved {
-  border-color: rgba(255, 184, 74, 0.34);
+  border-color: color-mix(in srgb, var(--primary) 34%, var(--line));
 }
 
 .saved-day {
-  display: grid;
-  grid-template-columns: 1fr auto;
+  justify-content: space-between;
   gap: 10px;
-  align-items: center;
-  border: 1px solid rgba(156, 230, 184, 0.32);
-  border-radius: 6px;
-  background:
-    linear-gradient(90deg, color-mix(in srgb, var(--accent-2) 9%, transparent), transparent 58%),
-    var(--control-bg);
+  border: 1px solid color-mix(in srgb, var(--secondary) 32%, transparent);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--secondary) 9%, var(--surface));
   padding: 12px;
-  box-shadow: var(--inset);
 }
 
 .saved-day strong,
@@ -743,7 +817,7 @@ canvas {
 }
 
 .saved-day strong {
-  color: var(--accent-2);
+  color: var(--secondary);
 }
 
 .saved-meta {
@@ -755,18 +829,14 @@ canvas {
 
 .saved-pill {
   display: inline-flex;
-  justify-content: center;
   align-items: center;
+  justify-content: center;
   min-height: 28px;
   padding: 0 9px;
-  border: 1px solid rgba(156, 230, 184, 0.52);
+  border: 1px solid color-mix(in srgb, var(--secondary) 52%, transparent);
   border-radius: 999px;
-  background: color-mix(in srgb, var(--accent-2) 18%, transparent);
-  color: var(--accent-2) !important;
-  font-family: "IBM Plex Mono", ui-monospace, monospace;
-  font-size: 0.68rem !important;
-  font-weight: 700 !important;
-  text-transform: uppercase;
+  background: color-mix(in srgb, var(--secondary) 14%, transparent);
+  color: var(--secondary);
 }
 
 .calendar {
@@ -780,10 +850,6 @@ canvas {
   display: grid;
   place-items: center;
   height: 22px;
-  color: var(--accent);
-  font-family: "IBM Plex Mono", ui-monospace, monospace;
-  font-size: 0.66rem;
-  font-weight: 700;
 }
 
 .calendar-day {
@@ -791,10 +857,10 @@ canvas {
   align-content: space-between;
   min-height: 64px;
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: 4px;
   padding: 7px 5px;
-  background: var(--control-bg);
-  color: var(--soft);
+  background: var(--surface);
+  color: var(--text);
   text-align: left;
 }
 
@@ -805,27 +871,27 @@ canvas {
 }
 
 .calendar-day strong {
-  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
   font-size: 0.84rem;
 }
 
-.calendar-day span {
-  min-height: 16px;
+.calendar-day span,
+.calendar-day small {
+  min-height: 15px;
   overflow: hidden;
-  color: var(--muted);
-  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
   font-size: 0.58rem;
   font-weight: 700;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.calendar-day span {
+  color: var(--muted);
+}
+
 .calendar-day small {
-  min-height: 14px;
-  color: var(--soft);
-  font-family: "IBM Plex Mono", ui-monospace, monospace;
-  font-size: 0.58rem;
-  font-weight: 700;
+  color: var(--text);
 }
 
 .calendar-day.muted {
@@ -833,21 +899,21 @@ canvas {
 }
 
 .calendar-day.trained {
-  border-color: rgba(156, 230, 184, 0.62);
-  background: linear-gradient(180deg, color-mix(in srgb, var(--accent-2) 18%, var(--control-bg)), var(--control-bg));
+  border-color: color-mix(in srgb, var(--secondary) 62%, var(--line));
+  background: color-mix(in srgb, var(--secondary) 12%, var(--surface));
 }
 
 .calendar-day.trained span {
-  color: var(--accent-2);
+  color: var(--secondary);
 }
 
 .calendar-day.saved.rest {
-  border-color: rgba(140, 200, 255, 0.35);
-  background: color-mix(in srgb, var(--blue) 12%, var(--control-bg));
+  border-color: color-mix(in srgb, var(--primary) 35%, var(--line));
+  background: color-mix(in srgb, var(--primary) 9%, var(--surface));
 }
 
 .calendar-day.saved.rest span {
-  color: var(--blue);
+  color: var(--primary);
 }
 
 .calendar-day.unsaved {
@@ -855,8 +921,37 @@ canvas {
 }
 
 .calendar-day.selected {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(255, 184, 74, 0.16);
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 16%, transparent);
+}
+
+.mobile-tabs {
+  position: fixed;
+  inset: auto 0 0;
+  z-index: 50;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  padding: 10px 16px 12px;
+  border-top: 1px solid var(--surface-highest);
+  background: var(--surface-container);
+}
+
+.mobile-tabs button {
+  display: grid;
+  place-items: center;
+  gap: 4px;
+  min-height: 48px;
+  background: transparent;
+  color: var(--muted);
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.mobile-tabs button.active {
+  color: var(--primary);
 }
 
 .auth,
@@ -879,7 +974,7 @@ canvas {
 }
 
 .auth-panel svg {
-  color: var(--accent);
+  color: var(--primary);
 }
 
 .auth-panel h1 {
@@ -898,27 +993,109 @@ canvas {
 }
 
 @media (hover: hover) {
-  .tabs button:hover,
-  .secondary:hover,
-  .split-grid button:hover,
-  .segmented button:hover,
-  .calendar-day:hover {
-    border-color: var(--line-strong);
-    color: var(--text);
+  .stat:hover,
+  .panel-section:hover,
+  .row:hover,
+  .calendar-day:hover,
+  .icon-button:hover,
+  .secondary:hover {
+    border-color: var(--primary);
+  }
+
+  .stat:hover,
+  .panel-section:hover {
+    transform: translateY(-2px);
+  }
+
+  .desktop-tabs button:hover,
+  .mobile-tabs button:hover,
+  .link-button:hover {
+    color: var(--primary);
   }
 
   .primary:hover {
-    transform: translateY(-1px);
+    opacity: 0.9;
   }
 }
 
-@media (min-width: 680px) {
+@media (max-width: 520px) {
+  .brand strong {
+    font-size: 1.08rem;
+  }
+
+  .hero-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .section-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .segmented {
+    width: 100%;
+  }
+
+  .two-fields,
+  .three-fields,
+  .form-actions {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (min-width: 760px) {
+  .mobile-only {
+    display: none;
+  }
+
+  .desktop-only,
+  .desktop-tabs {
+    display: flex;
+  }
+
+  .desktop-only.icon-button {
+    display: grid;
+  }
+
+  .mobile-tabs {
+    display: none;
+  }
+
+  .app-shell {
+    padding-bottom: 0;
+  }
+
   .app {
-    padding-inline: 22px;
+    padding: 32px 32px 48px;
   }
 
   h1 {
     max-width: none;
+    font-size: 2.55rem;
+  }
+
+  .stat-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .stat:nth-child(5) {
+    grid-column: span 4;
+    min-height: 92px;
+  }
+}
+
+@media (min-width: 1040px) {
+  .dashboard-grid {
+    grid-template-columns: minmax(0, 2fr) minmax(320px, 1fr);
+  }
+
+  .pr-panel {
+    min-height: 100%;
+  }
+
+  .stat:nth-child(5) {
+    grid-column: auto;
   }
 
   .stat-grid {

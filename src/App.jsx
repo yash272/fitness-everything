@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Activity, BarChart3, CalendarDays, Dumbbell, Moon, Plus, RefreshCw, Scale, Sun, Trash2 } from "lucide-react";
+import { Activity, BarChart3, Bell, CalendarDays, Dumbbell, Moon, Plus, RefreshCw, Scale, Settings, Sun, Trash2 } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "./supabaseClient";
 
 const DEFAULT_WORKOUT_TYPES = ["Push", "Pull", "Legs", "Cardio", "Sports", "Mobility"];
@@ -312,15 +312,38 @@ function Tracker() {
   const weekDays = workoutDaysWithin(workouts, weekStartKey(), todayKey());
   const monthDays = workoutDaysWithin(workouts, monthStartKey(), todayKey());
   const todaySteps = todayWorkout?.steps || 0;
+  const navItems = [
+    { id: "dashboard", label: "Dashboard", icon: BarChart3 },
+    { id: "daily", label: "Daily", icon: CalendarDays },
+    { id: "workout", label: "Workout", icon: Dumbbell },
+    { id: "body", label: "Body", icon: Scale }
+  ];
 
   return (
-    <main className="app">
+    <div className="app-shell">
       <header className="topbar">
-        <div>
-          <p className="eyebrow">Fitness Everything</p>
-          <h1>Track the next set.</h1>
+        <div className="brand">
+          <Dumbbell size={23} strokeWidth={2.5} />
+          <strong>Performance</strong>
         </div>
+        <nav className="desktop-tabs" aria-label="Primary">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            return (
+              <button key={item.id} className={activeView === item.id ? "active" : ""} onClick={() => setActiveView(item.id)}>
+                <Icon size={17} />
+                {item.label}
+              </button>
+            );
+          })}
+        </nav>
         <div className="top-actions">
+          <button className="icon-button mobile-only" aria-label="Notifications" title="Notifications">
+            <Bell size={18} />
+          </button>
+          <button className="icon-button desktop-only" aria-label="Settings" title="Settings">
+            <Settings size={18} />
+          </button>
           <button
             className="icon-button"
             onClick={() => setTheme((current) => current === "dark" ? "light" : "dark")}
@@ -329,78 +352,95 @@ function Tracker() {
           >
             {theme === "dark" ? <Sun size={19} /> : <Moon size={19} />}
           </button>
-          <div className="date-chip">{new Date().toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}</div>
         </div>
       </header>
 
-      <nav className="tabs" aria-label="Primary">
-        <button className={activeView === "dashboard" ? "active" : ""} onClick={() => setActiveView("dashboard")}><BarChart3 size={18} />Dashboard</button>
-        <button className={activeView === "daily" ? "active" : ""} onClick={() => setActiveView("daily")}><CalendarDays size={18} />Daily</button>
-        <button className={activeView === "workout" ? "active" : ""} onClick={() => setActiveView("workout")}><Dumbbell size={18} />Workout</button>
-        <button className={activeView === "body" ? "active" : ""} onClick={() => setActiveView("body")}><Scale size={18} />Body</button>
+      <main className="app">
+        <section className="hero-row">
+          <div>
+            <p className="eyebrow">Fitness Everything</p>
+            <h1>Track the next set.</h1>
+          </div>
+          <div className="date-chip">
+            <CalendarDays size={16} />
+            {new Date().toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}
+          </div>
+        </section>
+
+        {notice && <div className="notice">{notice}</div>}
+        {loading ? <Shell message="Loading synced data..." compact /> : null}
+
+        {!loading && activeView === "dashboard" && (
+          <Dashboard
+            workoutSets={workoutSets}
+            todayWorkout={todayWorkout}
+            todayPrs={todayPrs}
+            latestBody={latestBody}
+            weekDays={weekDays}
+            monthDays={monthDays}
+            bodyLogs={bodyLogs}
+            range={range}
+            setRange={setRange}
+            recentPrs={recentPrs}
+            todaySteps={todaySteps}
+            theme={theme}
+          />
+        )}
+
+        {!loading && activeView === "daily" && (
+          <DailyView
+            workouts={workouts}
+            bodyLogs={bodyLogs}
+            selectedDate={selectedDate}
+            setSelectedDate={setSelectedDate}
+            calendarMonth={calendarMonth}
+            setCalendarMonth={setCalendarMonth}
+            saveDailyLog={saveDailyLog}
+            selectedSplit={selectedSplit}
+            saving={saving}
+          />
+        )}
+
+        {!loading && activeView === "workout" && (
+          <WorkoutView
+            selectedSplit={selectedSplit}
+            changeSplit={changeSplit}
+            exerciseForm={exerciseForm}
+            setExerciseForm={setExerciseForm}
+            addExercise={addExercise}
+            exerciseNames={exerciseNames}
+            workoutTypes={workoutTypes}
+            todayWorkout={todayWorkout}
+            bestBefore={bestBefore}
+            repeatSet={repeatSet}
+            deleteExercise={deleteExercise}
+            saving={saving}
+          />
+        )}
+
+        {!loading && activeView === "body" && (
+          <BodyView
+            bodyForm={bodyForm}
+            setBodyForm={setBodyForm}
+            saveBody={saveBody}
+            bodyLogs={bodyLogs}
+            saving={saving}
+          />
+        )}
+      </main>
+
+      <nav className="mobile-tabs" aria-label="Primary">
+        {navItems.map((item) => {
+          const Icon = item.icon;
+          return (
+            <button key={item.id} className={activeView === item.id ? "active" : ""} onClick={() => setActiveView(item.id)}>
+              <Icon size={21} />
+              <span>{item.label}</span>
+            </button>
+          );
+        })}
       </nav>
-
-      {notice && <div className="notice">{notice}</div>}
-      {loading ? <Shell message="Loading synced data..." compact /> : null}
-
-      {!loading && activeView === "dashboard" && (
-        <Dashboard
-          workoutSets={workoutSets}
-          todayWorkout={todayWorkout}
-          todayPrs={todayPrs}
-          latestBody={latestBody}
-          weekDays={weekDays}
-          monthDays={monthDays}
-          bodyLogs={bodyLogs}
-          range={range}
-          setRange={setRange}
-          recentPrs={recentPrs}
-          todaySteps={todaySteps}
-          theme={theme}
-        />
-      )}
-
-      {!loading && activeView === "daily" && (
-        <DailyView
-          workouts={workouts}
-          bodyLogs={bodyLogs}
-          selectedDate={selectedDate}
-          setSelectedDate={setSelectedDate}
-          calendarMonth={calendarMonth}
-          setCalendarMonth={setCalendarMonth}
-          saveDailyLog={saveDailyLog}
-          selectedSplit={selectedSplit}
-          saving={saving}
-        />
-      )}
-
-      {!loading && activeView === "workout" && (
-        <WorkoutView
-          selectedSplit={selectedSplit}
-          changeSplit={changeSplit}
-          exerciseForm={exerciseForm}
-          setExerciseForm={setExerciseForm}
-          addExercise={addExercise}
-          exerciseNames={exerciseNames}
-          workoutTypes={workoutTypes}
-          todayWorkout={todayWorkout}
-          bestBefore={bestBefore}
-          repeatSet={repeatSet}
-          deleteExercise={deleteExercise}
-          saving={saving}
-        />
-      )}
-
-      {!loading && activeView === "body" && (
-        <BodyView
-          bodyForm={bodyForm}
-          setBodyForm={setBodyForm}
-          saveBody={saveBody}
-          bodyLogs={bodyLogs}
-          saving={saving}
-        />
-      )}
-    </main>
+    </div>
   );
 }
 
@@ -415,30 +455,49 @@ function Dashboard({ workoutSets, todayWorkout, todayPrs, latestBody, weekDays, 
         <Stat label="This Month" value={`${monthDays} days`} detail="Workout days this month" />
       </section>
 
-      <section className="panel-section">
-        <div className="section-head">
-          <h2>Weight Trend</h2>
-          <div className="segmented">
-            {[30, 60, 90].map((days) => <button key={days} className={range === days ? "active" : ""} onClick={() => setRange(days)}>{days}D</button>)}
-          </div>
-        </div>
-        <WeightChart logs={bodyLogs} range={range} theme={theme} />
-      </section>
-
-      <section className="panel-section">
-        <h2>Recent PRs</h2>
-        <div className="list">
-          {recentPrs.length ? recentPrs.map((pr) => (
-            <div className="row" key={pr.id}>
-              <div>
-                <strong>{pr.exercise}</strong>
-                <span>{formatDate(pr.date)} - {pr.split}</span>
-              </div>
-              <b>{formatSet(pr, pr.trackingType)}</b>
+      <div className="dashboard-grid">
+        <section className="panel-section trend-panel">
+          <div className="section-head">
+            <div>
+              <h2>Weight Trend</h2>
+              <p>Consistency is the key to progress</p>
             </div>
-          )) : <Empty text="Beat a previous weight or rep mark and it will show here." />}
-        </div>
-      </section>
+            <div className="segmented">
+              {[30, 60, 90].map((days) => <button key={days} className={range === days ? "active" : ""} onClick={() => setRange(days)}>{days}D</button>)}
+            </div>
+          </div>
+          <WeightChart logs={bodyLogs} range={range} theme={theme} />
+          <div className="trend-meta">
+            <div>
+              <span>Max Weight</span>
+              <strong>{bodyLogs.length ? `${Math.max(...bodyLogs.map((entry) => Number(entry.weight))).toFixed(1)} kg` : "-- kg"}</strong>
+            </div>
+            <div>
+              <span>Latest</span>
+              <strong>{latestBody ? `${Number(latestBody.weight).toFixed(1)} kg` : "-- kg"}</strong>
+            </div>
+          </div>
+        </section>
+
+        <section className="panel-section pr-panel">
+          <div className="section-head">
+            <h2>Recent PRs</h2>
+            <button className="link-button">View All</button>
+          </div>
+          <div className="list">
+            {recentPrs.length ? recentPrs.map((pr) => (
+              <div className="row" key={pr.id}>
+                <div>
+                  <strong>{pr.exercise}</strong>
+                  <span>{formatDate(pr.date)} - {pr.split}</span>
+                </div>
+                <b>{formatSet(pr, pr.trackingType)}</b>
+              </div>
+            )) : <Empty text="Beat a previous weight or rep mark and it will show here." />}
+          </div>
+          <button className="primary pr-action"><Plus size={18} />Log New PR</button>
+        </section>
+      </div>
     </>
   );
 }
