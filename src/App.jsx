@@ -324,7 +324,7 @@ function Tracker() {
       <header className="topbar">
         <div className="brand">
           <Dumbbell size={23} strokeWidth={2.5} />
-          <strong>Performance</strong>
+          <strong>fitness everything</strong>
         </div>
         <nav className="desktop-tabs" aria-label="Primary">
           {navItems.map((item) => {
