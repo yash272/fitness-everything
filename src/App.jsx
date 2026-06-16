@@ -292,11 +292,12 @@ function Tracker() {
     setSaving(true);
     setNotice("");
     try {
-      await ensureWorkoutForDate(date, split, {
-        did_workout: didWorkout,
-        steps: steps === "" ? null : Number(steps)
-      });
-      if (date === todayKey()) setSelectedSplit(split);
+      const fields = {};
+      if (didWorkout !== undefined) fields.did_workout = didWorkout;
+      if (steps !== undefined) fields.steps = steps === "" ? null : Number(steps);
+
+      await ensureWorkoutForDate(date, split, fields);
+      if (date === todayKey() && didWorkout === true) setSelectedSplit(split);
       return true;
     } catch (error) {
       setNotice(error.message);
@@ -505,28 +506,27 @@ function Dashboard({ workoutSets, todayWorkout, todayPrs, latestBody, weekDays, 
 function DailyView({ workouts, bodyLogs, selectedDate, setSelectedDate, calendarMonth, setCalendarMonth, saveDailyLog, selectedSplit, saving }) {
   const selectedLog = workouts.find((workout) => workout.workout_date === selectedDate);
   const selectedBodyLog = bodyLogs.find((entry) => entry.log_date === selectedDate);
-  const [isEditing, setIsEditing] = useState(!selectedLog);
-  const [form, setForm] = useState({
-    didWorkout: selectedLog?.did_workout || false,
-    steps: selectedLog?.steps ?? ""
-  });
+  const [stepsDraft, setStepsDraft] = useState(selectedLog?.steps ?? "");
 
   useEffect(() => {
-    setForm({
-      didWorkout: selectedLog?.did_workout || false,
-      steps: selectedLog?.steps ?? ""
-    });
-    setIsEditing(!selectedLog);
+    setStepsDraft(selectedLog?.steps ?? "");
   }, [selectedLog, selectedDate]);
 
-  async function submit(event) {
-    event.preventDefault();
-    const saved = await saveDailyLog({
+  async function setGymStatus(didWorkout) {
+    await saveDailyLog({
       date: selectedDate,
-      ...form,
+      didWorkout,
       split: selectedLog?.split || selectedSplit || "Push"
     });
-    if (saved) setIsEditing(false);
+  }
+
+  async function saveSteps(event) {
+    event.preventDefault();
+    await saveDailyLog({
+      date: selectedDate,
+      steps: stepsDraft,
+      split: selectedLog?.split || selectedSplit || "Push"
+    });
   }
 
   return (
@@ -550,37 +550,36 @@ function DailyView({ workouts, bodyLogs, selectedDate, setSelectedDate, calendar
         <div className="section-head">
           <div>
             <h2>{selectedDate === todayKey() ? "Today" : formatLongDate(selectedDate)}</h2>
-            <p>{selectedLog ? "Saved day" : "No daily log saved yet"}</p>
+            <p>Gym and steps can be changed separately.</p>
           </div>
-          {selectedLog && !isEditing ? <button className="secondary mini" onClick={() => setIsEditing(true)}>Edit</button> : null}
         </div>
 
-        {selectedLog && !isEditing ? (
-          <div className="saved-day">
+        <div className="daily-control-grid">
+          <div className="daily-control form">
             <div>
-              <strong>{selectedLog.did_workout ? "Gym logged" : "No Gym"}</strong>
-              <span className="saved-meta">{dailyMeta(selectedLog, selectedBodyLog)}</span>
+              <h3>Gym Status</h3>
+              <p>{selectedLog?.did_workout ? `${selectedLog.split} logged` : "No gym logged"}</p>
             </div>
-            <span className="saved-pill">Saved</span>
-          </div>
-        ) : (
-          <form className="form" onSubmit={submit}>
             <div className="toggle-row">
-              <button type="button" className={form.didWorkout ? "active" : ""} onClick={() => setForm({ ...form, didWorkout: true })}>Gym</button>
-              <button type="button" className={!form.didWorkout ? "active" : ""} onClick={() => setForm({ ...form, didWorkout: false })}>No Gym</button>
+              <button type="button" className={selectedLog?.did_workout ? "active" : ""} onClick={() => setGymStatus(true)} disabled={saving}>Gym</button>
+              <button type="button" className={!selectedLog?.did_workout ? "active" : ""} onClick={() => setGymStatus(false)} disabled={saving}>No Gym</button>
+            </div>
+          </div>
+
+          <form className="daily-control form" onSubmit={saveSteps}>
+            <div>
+              <h3>Steps</h3>
+              <p>{selectedLog?.steps ? `${Number(selectedLog.steps).toLocaleString()} steps saved` : "No steps saved"}</p>
             </div>
             <div className="one-field">
               <label>
                 Steps
-                <input type="number" min="0" inputMode="numeric" value={form.steps} placeholder="8500" onChange={(event) => setForm({ ...form, steps: event.target.value })} />
+                <input type="number" min="0" inputMode="numeric" value={stepsDraft} placeholder="8500" onChange={(event) => setStepsDraft(event.target.value)} />
               </label>
             </div>
-            <div className="form-actions">
-              {selectedLog ? <button type="button" className="secondary" onClick={() => setIsEditing(false)}>Cancel</button> : null}
-              <button className="primary" disabled={saving}><CalendarDays size={18} />{selectedLog ? "Update Day" : "Save Day"}</button>
-            </div>
+            <button className="primary" disabled={saving}><CalendarDays size={18} />Save Steps</button>
           </form>
-        )}
+        </div>
       </section>
 
       <section className="panel-section">
@@ -653,7 +652,7 @@ function CalendarGrid({ month, workouts, bodyLogs, selectedDate, setSelectedDate
             onClick={() => setSelectedDate(key)}
           >
             <strong>{day.getDate()}</strong>
-            <span>{didWorkout ? log.split : isSaved ? "Saved" : hasSteps ? `${Number(log.steps).toLocaleString()}` : ""}</span>
+            <span>{didWorkout ? log.split : hasSteps ? `${Number(log.steps).toLocaleString()}` : isSaved ? "Saved" : ""}</span>
             <small>{bodyLog ? `${Number(bodyLog.weight).toFixed(1)} kg` : ""}</small>
           </button>
         );

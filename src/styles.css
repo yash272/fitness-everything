@@ -798,6 +798,27 @@ canvas {
   border-color: color-mix(in srgb, var(--primary) 34%, var(--line));
 }
 
+.daily-control-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.daily-control {
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+}
+
+.daily-control p {
+  margin-top: 5px;
+  color: var(--muted);
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 0.76rem;
+  line-height: 1.35;
+  text-transform: uppercase;
+}
+
 .saved-day {
   justify-content: space-between;
   gap: 10px;
@@ -1078,6 +1099,11 @@ canvas {
   .stat:nth-child(5) {
     grid-column: span 4;
     min-height: 92px;
+  }
+
+  .daily-control-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
   }
 }
 
