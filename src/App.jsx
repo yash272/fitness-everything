@@ -506,9 +506,11 @@ function Dashboard({ workoutSets, todayWorkout, todayPrs, latestBody, weekDays, 
 function DailyView({ workouts, bodyLogs, selectedDate, setSelectedDate, calendarMonth, setCalendarMonth, saveDailyLog, selectedSplit, saving }) {
   const selectedLog = workouts.find((workout) => workout.workout_date === selectedDate);
   const selectedBodyLog = bodyLogs.find((entry) => entry.log_date === selectedDate);
+  const [isEditingSteps, setIsEditingSteps] = useState(false);
   const [stepsDraft, setStepsDraft] = useState(selectedLog?.steps ?? "");
 
   useEffect(() => {
+    setIsEditingSteps(false);
     setStepsDraft(selectedLog?.steps ?? "");
   }, [selectedLog, selectedDate]);
 
@@ -522,11 +524,12 @@ function DailyView({ workouts, bodyLogs, selectedDate, setSelectedDate, calendar
 
   async function saveSteps(event) {
     event.preventDefault();
-    await saveDailyLog({
+    const saved = await saveDailyLog({
       date: selectedDate,
       steps: stepsDraft,
       split: selectedLog?.split || selectedSplit || "Push"
     });
+    if (saved) setIsEditingSteps(false);
   }
 
   return (
@@ -567,17 +570,32 @@ function DailyView({ workouts, bodyLogs, selectedDate, setSelectedDate, calendar
           </div>
 
           <form className="daily-control form" onSubmit={saveSteps}>
-            <div>
-              <h3>Steps</h3>
-              <p>{selectedLog?.steps ? `${Number(selectedLog.steps).toLocaleString()} steps saved` : "No steps saved"}</p>
+            <div className="daily-control-head">
+              <div>
+                <h3>Steps</h3>
+                <p>{selectedLog?.steps ? `${Number(selectedLog.steps).toLocaleString()} steps saved` : "No steps saved"}</p>
+              </div>
+              {!isEditingSteps ? (
+                <button type="button" className="secondary mini" onClick={() => setIsEditingSteps(true)}>Edit</button>
+              ) : null}
             </div>
-            <div className="one-field">
-              <label>
-                Steps
-                <input type="number" min="0" inputMode="numeric" value={stepsDraft} placeholder="8500" onChange={(event) => setStepsDraft(event.target.value)} />
-              </label>
-            </div>
-            <button className="primary" disabled={saving}><CalendarDays size={18} />Save Steps</button>
+            {isEditingSteps ? (
+              <>
+                <div className="one-field">
+                  <label>
+                    Steps
+                    <input type="number" min="0" inputMode="numeric" value={stepsDraft} placeholder="8500" onChange={(event) => setStepsDraft(event.target.value)} />
+                  </label>
+                </div>
+                <div className="form-actions">
+                  <button type="button" className="secondary" onClick={() => {
+                    setStepsDraft(selectedLog?.steps ?? "");
+                    setIsEditingSteps(false);
+                  }}>Cancel</button>
+                  <button className="primary" disabled={saving}><CalendarDays size={18} />Save Steps</button>
+                </div>
+              </>
+            ) : null}
           </form>
         </div>
       </section>

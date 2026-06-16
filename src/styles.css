@@ -810,6 +810,13 @@ canvas {
   background: var(--surface);
 }
 
+.daily-control-head {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 .daily-control p {
   margin-top: 5px;
   color: var(--muted);
