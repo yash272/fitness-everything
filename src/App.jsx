@@ -670,8 +670,9 @@ function CalendarGrid({ month, workouts, bodyLogs, selectedDate, setSelectedDate
             onClick={() => setSelectedDate(key)}
           >
             <strong>{day.getDate()}</strong>
-            <span>{didWorkout ? log.split : hasSteps ? `${Number(log.steps).toLocaleString()}` : isSaved ? "Saved" : ""}</span>
-            <small>{bodyLog ? `${Number(bodyLog.weight).toFixed(1)} kg` : ""}</small>
+            <span className="calendar-workout">{didWorkout ? log.split : isSaved ? "Rest" : ""}</span>
+            <span className="calendar-metric">{hasSteps ? formatCalendarSteps(log.steps) : "No steps"}</span>
+            <small>{bodyLog ? `${Number(bodyLog.weight).toFixed(1)} kg` : "No weight"}</small>
           </button>
         );
       })}
@@ -680,15 +681,20 @@ function CalendarGrid({ month, workouts, bodyLogs, selectedDate, setSelectedDate
 }
 
 function WorkoutView({ selectedSplit, changeSplit, exerciseForm, setExerciseForm, addExercise, exerciseNames, workoutTypes, todayWorkout, bestBefore, repeatSet, deleteExercise, saving }) {
+  const [isEditingType, setIsEditingType] = useState(false);
   const [typeDraft, setTypeDraft] = useState(selectedSplit);
 
   useEffect(() => {
+    setIsEditingType(false);
     setTypeDraft(selectedSplit);
   }, [selectedSplit]);
 
-  function saveWorkoutType() {
+  async function saveWorkoutType(event) {
+    event.preventDefault();
     const next = typeDraft.trim();
-    if (next && next !== selectedSplit) changeSplit(next);
+    if (!next) return;
+    if (next !== selectedSplit) await changeSplit(next);
+    setIsEditingType(false);
   }
 
   function updateSet(index, field, value) {
@@ -712,28 +718,40 @@ function WorkoutView({ selectedSplit, changeSplit, exerciseForm, setExerciseForm
 
   return (
     <>
-      <section className="panel-section form">
-        <h2>Workout Type</h2>
-        <label>
-          Type
-          <input
-            value={typeDraft}
-            list="workout-type-options"
-            placeholder="Push, Badminton, Run..."
-            onChange={(event) => setTypeDraft(event.target.value)}
-            onBlur={saveWorkoutType}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") {
-                event.preventDefault();
-                event.currentTarget.blur();
-              }
-            }}
-          />
-          <datalist id="workout-type-options">
-            {workoutTypes.map((type) => <option key={type} value={type} />)}
-          </datalist>
-        </label>
-      </section>
+      <form className="panel-section form" onSubmit={saveWorkoutType}>
+        <div className="daily-control-head">
+          <div>
+            <h2>Workout Type</h2>
+            <p>{selectedSplit}</p>
+          </div>
+          {!isEditingType ? (
+            <button type="button" className="secondary mini" onClick={() => setIsEditingType(true)}>Edit</button>
+          ) : null}
+        </div>
+        {isEditingType ? (
+          <>
+            <label>
+              Type
+              <input
+                value={typeDraft}
+                list="workout-type-options"
+                placeholder="Push, Badminton, Run..."
+                onChange={(event) => setTypeDraft(event.target.value)}
+              />
+              <datalist id="workout-type-options">
+                {workoutTypes.map((type) => <option key={type} value={type} />)}
+              </datalist>
+            </label>
+            <div className="form-actions">
+              <button type="button" className="secondary" onClick={() => {
+                setTypeDraft(selectedSplit);
+                setIsEditingType(false);
+              }}>Cancel</button>
+              <button className="primary" disabled={saving || !typeDraft.trim()}><Dumbbell size={18} />Save Type</button>
+            </div>
+          </>
+        ) : null}
+      </form>
 
       <form className="panel-section form" onSubmit={addExercise}>
         <h2>Add Exercise</h2>
@@ -1066,6 +1084,12 @@ function formatSet(set, trackingType = "weighted") {
   if (trackingType === "time") return `${Number(set.duration_minutes || 0)} min`;
   if (trackingType === "bodyweight") return `${set.reps} reps`;
   return `${Number(set.weight || 0)} lbs x ${set.reps}`;
+}
+
+function formatCalendarSteps(steps) {
+  const count = Number(steps || 0);
+  if (count >= 1000) return `${(count / 1000).toFixed(1)}k steps`;
+  return `${count.toLocaleString()} steps`;
 }
 
 function startOfMonth(date) {

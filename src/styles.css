@@ -817,7 +817,8 @@ canvas {
   gap: 12px;
 }
 
-.daily-control p {
+.daily-control p,
+.daily-control-head p {
   margin-top: 5px;
   color: var(--muted);
   font-family: "JetBrains Mono", ui-monospace, monospace;
@@ -879,10 +880,10 @@ canvas {
 .calendar-day {
   display: grid;
   align-content: space-between;
-  min-height: 64px;
+  min-height: 82px;
   border: 1px solid var(--line);
   border-radius: 4px;
-  padding: 7px 5px;
+  padding: 7px 6px;
   background: var(--surface);
   color: var(--text);
   text-align: left;
@@ -899,19 +900,24 @@ canvas {
   font-size: 0.84rem;
 }
 
-.calendar-day span,
+.calendar-workout,
+.calendar-metric,
 .calendar-day small {
-  min-height: 15px;
+  min-height: 14px;
   overflow: hidden;
   font-family: "JetBrains Mono", ui-monospace, monospace;
-  font-size: 0.58rem;
+  font-size: 0.52rem;
   font-weight: 700;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.calendar-day span {
+.calendar-workout {
   color: var(--muted);
+}
+
+.calendar-metric {
+  color: var(--primary);
 }
 
 .calendar-day small {
@@ -929,6 +935,10 @@ canvas {
 
 .calendar-day.trained span {
   color: var(--secondary);
+}
+
+.calendar-day.trained .calendar-metric {
+  color: var(--primary);
 }
 
 .calendar-day.saved.rest {
