@@ -230,6 +230,20 @@ h3 {
   padding: 0 10px;
 }
 
+.export-button {
+  display: inline-flex;
+  gap: 7px;
+  width: auto;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.export-button span {
+  display: none;
+}
+
 .desktop-only.icon-button {
   display: none;
 }
@@ -269,6 +283,8 @@ label,
 }
 
 .notice {
+  display: grid;
+  gap: 10px;
   margin: 0 0 14px;
   padding: 13px;
   border: 1px solid color-mix(in srgb, var(--primary) 42%, transparent);
@@ -276,6 +292,25 @@ label,
   background: color-mix(in srgb, var(--primary) 10%, transparent);
   color: var(--text);
   line-height: 1.45;
+}
+
+.export-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 38px;
+  width: max-content;
+  max-width: 100%;
+  border-radius: 4px;
+  padding: 0 12px;
+  background: var(--primary);
+  color: var(--primary-text);
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-decoration: none;
+  text-transform: uppercase;
 }
 
 .stat-grid {
@@ -871,6 +906,96 @@ canvas {
   margin-top: 12px;
 }
 
+.calendar-actions {
+  display: grid;
+  gap: 6px;
+  width: auto;
+  justify-self: end;
+}
+
+.calendar-nav {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.view-switch {
+  min-width: 96px;
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.view-switch button,
+.calendar-nav button {
+  min-height: 34px;
+  padding: 0 10px;
+}
+
+.week-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.week-day {
+  display: grid;
+  align-content: start;
+  gap: 7px;
+  min-height: 118px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 10px 6px;
+  background: var(--surface);
+  color: var(--text);
+  text-align: center;
+}
+
+.week-day strong span,
+.week-day b,
+.week-day small {
+  display: block;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: clamp(0.5rem, 1.55vw, 0.72rem);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.week-day strong span {
+  margin-bottom: 5px;
+  color: var(--primary);
+}
+
+.week-day strong {
+  color: var(--white);
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: clamp(1rem, 3.7vw, 1.7rem);
+  line-height: 1;
+}
+
+.week-day div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.week-day b {
+  color: var(--secondary);
+}
+
+.week-day.rest b {
+  color: var(--muted);
+}
+
+.week-day small {
+  color: var(--text);
+  text-transform: none;
+}
+
+.week-day.selected {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 16%, transparent);
+}
+
 .weekday {
   display: grid;
   place-items: center;
@@ -880,13 +1005,13 @@ canvas {
 .calendar-day {
   display: grid;
   align-content: space-between;
-  min-height: 82px;
+  min-height: 78px;
   border: 1px solid var(--line);
   border-radius: 4px;
-  padding: 7px 6px;
+  padding: 8px 5px;
   background: var(--surface);
   color: var(--text);
-  text-align: left;
+  text-align: center;
 }
 
 .calendar-day strong,
@@ -897,7 +1022,7 @@ canvas {
 
 .calendar-day strong {
   font-family: "JetBrains Mono", ui-monospace, monospace;
-  font-size: 0.84rem;
+  font-size: 0.86rem;
 }
 
 .calendar-workout,
@@ -906,13 +1031,13 @@ canvas {
   min-height: 14px;
   overflow: hidden;
   font-family: "JetBrains Mono", ui-monospace, monospace;
-  font-size: 0.52rem;
+  font-size: 0.6rem;
   font-weight: 700;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.calendar-workout {
+.calendar-day .calendar-workout {
   color: var(--muted);
 }
 
@@ -922,6 +1047,37 @@ canvas {
 
 .calendar-day small {
   color: var(--text);
+}
+
+.calendar-dots {
+  display: flex;
+  justify-content: center;
+  gap: 3px;
+  min-height: 6px;
+}
+
+.calendar-dots i {
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--surface-highest);
+  opacity: 0.42;
+}
+
+.calendar-dots i.active {
+  opacity: 1;
+}
+
+.calendar-dots i.workout {
+  background: var(--secondary);
+}
+
+.calendar-dots i.steps {
+  background: var(--primary);
+}
+
+.calendar-dots i.weight {
+  background: var(--text);
 }
 
 .calendar-day.muted {
@@ -1092,6 +1248,10 @@ canvas {
     display: grid;
   }
 
+  .export-button span {
+    display: inline;
+  }
+
   .mobile-tabs {
     display: none;
   }
@@ -1122,6 +1282,19 @@ canvas {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     align-items: start;
   }
+
+  .calendar-actions {
+    width: auto;
+    min-width: 190px;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+  }
+
+  .week-day {
+    min-height: 138px;
+    padding: 12px 8px;
+  }
+
 }
 
 @media (min-width: 1040px) {

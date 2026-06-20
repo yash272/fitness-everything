@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Activity, BarChart3, Bell, CalendarDays, Dumbbell, Moon, Plus, RefreshCw, Scale, Settings, Sun, Trash2 } from "lucide-react";
+import { Activity, BarChart3, CalendarDays, CalendarRange, ChevronLeft, ChevronRight, Download, Dumbbell, Moon, Plus, RefreshCw, Scale, Settings, Sun, Trash2 } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "./supabaseClient";
 
 const DEFAULT_WORKOUT_TYPES = ["Push", "Pull", "Legs", "Cardio", "Sports", "Mobility"];
@@ -47,11 +47,16 @@ function Tracker() {
   const [exerciseForm, setExerciseForm] = useState({ name: "", trackingType: "weighted", sets: [{ reps: "10", weight: "", duration: "" }] });
   const [bodyForm, setBodyForm] = useState({ weight: "", bodyFat: "" });
   const [notice, setNotice] = useState("");
+  const [exportFile, setExportFile] = useState(null);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
     localStorage.setItem("fitness-theme", theme);
   }, [theme]);
+
+  useEffect(() => () => {
+    if (exportFile?.url) URL.revokeObjectURL(exportFile.url);
+  }, [exportFile]);
 
   const todayWorkout = useMemo(() => workouts.find((workout) => workout.workout_date === todayKey()), [workouts]);
   const exerciseNames = useMemo(() => {
@@ -307,6 +312,27 @@ function Tracker() {
     }
   }
 
+  function exportMonthData() {
+    const payload = buildMonthExport({
+      month: calendarMonth,
+      workouts,
+      bodyLogs,
+      userId
+    });
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const filename = `fitness-everything-${payload.period.month}.json`;
+    if (exportFile?.url) URL.revokeObjectURL(exportFile.url);
+    setExportFile({ url, filename, label: payload.period.label });
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    window.setTimeout(() => link.remove(), 0);
+    setNotice(`Export ready for ${payload.period.label}. If it did not download automatically, use the download link below.`);
+  }
+
   const workoutSets = todayWorkout?.exercises?.reduce((sum, exercise) => sum + exercise.exercise_sets.length, 0) || 0;
   const todayPrs = todayWorkout?.exercises?.reduce((sum, exercise) => sum + exercise.exercise_sets.filter((set) => set.is_pr).length, 0) || 0;
   const latestBody = bodyLogs.at(-1);
@@ -339,8 +365,9 @@ function Tracker() {
           })}
         </nav>
         <div className="top-actions">
-          <button className="icon-button mobile-only" aria-label="Notifications" title="Notifications">
-            <Bell size={18} />
+          <button className="icon-button export-button" onClick={exportMonthData} aria-label="Export current month JSON" title="Export current month JSON">
+            <Download size={18} />
+            <span>Export</span>
           </button>
           <button className="icon-button desktop-only" aria-label="Settings" title="Settings">
             <Settings size={18} />
@@ -368,7 +395,17 @@ function Tracker() {
           </div>
         </section>
 
-        {notice && <div className="notice">{notice}</div>}
+        {notice && (
+          <div className="notice">
+            <span>{notice}</span>
+            {exportFile ? (
+              <a className="export-link" href={exportFile.url} download={exportFile.filename}>
+                <Download size={16} />
+                Download JSON
+              </a>
+            ) : null}
+          </div>
+        )}
         {loading ? <Shell message="Loading synced data..." compact /> : null}
 
         {!loading && activeView === "dashboard" && (
@@ -506,13 +543,23 @@ function Dashboard({ workoutSets, todayWorkout, todayPrs, latestBody, weekDays, 
 function DailyView({ workouts, bodyLogs, selectedDate, setSelectedDate, calendarMonth, setCalendarMonth, saveDailyLog, selectedSplit, saving }) {
   const selectedLog = workouts.find((workout) => workout.workout_date === selectedDate);
   const selectedBodyLog = bodyLogs.find((entry) => entry.log_date === selectedDate);
+  const [calendarMode, setCalendarMode] = useState("week");
   const [isEditingSteps, setIsEditingSteps] = useState(false);
   const [stepsDraft, setStepsDraft] = useState(selectedLog?.steps ?? "");
+  const selectedDateObject = useMemo(() => new Date(`${selectedDate}T12:00:00`), [selectedDate]);
+  const weekStart = useMemo(() => startOfWeek(selectedDateObject), [selectedDateObject]);
+  const weekEnd = useMemo(() => addDays(weekStart, 6), [weekStart]);
 
   useEffect(() => {
     setIsEditingSteps(false);
     setStepsDraft(selectedLog?.steps ?? "");
   }, [selectedLog, selectedDate]);
+
+  function moveWeek(amount) {
+    const next = addDays(weekStart, amount * 7);
+    setSelectedDate(dateKey(next));
+    setCalendarMonth(startOfMonth(next));
+  }
 
   async function setGymStatus(didWorkout) {
     await saveDailyLog({
@@ -536,24 +583,51 @@ function DailyView({ workouts, bodyLogs, selectedDate, setSelectedDate, calendar
     <>
       <section className="panel-section">
         <div className="section-head">
-          <button className="secondary mini" onClick={() => setCalendarMonth(addMonths(calendarMonth, -1))}>Prev</button>
-          <h2>{calendarMonth.toLocaleDateString(undefined, { month: "long", year: "numeric" })}</h2>
-          <button className="secondary mini" onClick={() => setCalendarMonth(addMonths(calendarMonth, 1))}>Next</button>
+          <div>
+            <h2>{calendarMode === "week" ? `${formatShortDate(weekStart)} - ${formatShortDate(weekEnd)}` : calendarMonth.toLocaleDateString(undefined, { month: "long", year: "numeric" })}</h2>
+          </div>
+          <div className="calendar-actions">
+            <div className="segmented view-switch">
+              <button className={calendarMode === "week" ? "active" : ""} onClick={() => setCalendarMode("week")} aria-label="Show week view" title="Week view">
+                <CalendarDays size={14} />
+              </button>
+              <button className={calendarMode === "month" ? "active" : ""} onClick={() => setCalendarMode("month")} aria-label="Show month view" title="Month view">
+                <CalendarRange size={14} />
+              </button>
+            </div>
+            <div className="calendar-nav">
+              <button className="secondary mini" onClick={() => calendarMode === "week" ? moveWeek(-1) : setCalendarMonth(addMonths(calendarMonth, -1))} aria-label={`Previous ${calendarMode}`} title={`Previous ${calendarMode}`}>
+                <ChevronLeft size={14} />
+              </button>
+              <button className="secondary mini" onClick={() => calendarMode === "week" ? moveWeek(1) : setCalendarMonth(addMonths(calendarMonth, 1))} aria-label={`Next ${calendarMode}`} title={`Next ${calendarMode}`}>
+                <ChevronRight size={14} />
+              </button>
+            </div>
+          </div>
         </div>
-        <CalendarGrid
-          month={calendarMonth}
-          workouts={workouts}
-          bodyLogs={bodyLogs}
-          selectedDate={selectedDate}
-          setSelectedDate={setSelectedDate}
-        />
+        {calendarMode === "week" ? (
+          <WeekGrid
+            weekStart={weekStart}
+            workouts={workouts}
+            bodyLogs={bodyLogs}
+            selectedDate={selectedDate}
+            setSelectedDate={setSelectedDate}
+          />
+        ) : (
+          <CalendarGrid
+            month={calendarMonth}
+            workouts={workouts}
+            bodyLogs={bodyLogs}
+            selectedDate={selectedDate}
+            setSelectedDate={setSelectedDate}
+          />
+        )}
       </section>
 
       <section className={`panel-section daily-state ${selectedLog ? "saved" : "unsaved"}`}>
         <div className="section-head">
           <div>
             <h2>{selectedDate === todayKey() ? "Today" : formatLongDate(selectedDate)}</h2>
-            <p>Gym and steps can be changed separately.</p>
           </div>
         </div>
 
@@ -605,6 +679,40 @@ function DailyView({ workouts, bodyLogs, selectedDate, setSelectedDate, calendar
         <DayWorkoutDetails workout={selectedLog} bodyLog={selectedBodyLog} />
       </section>
     </>
+  );
+}
+
+function WeekGrid({ weekStart, workouts, bodyLogs, selectedDate, setSelectedDate }) {
+  const logsByDate = new Map(workouts.map((workout) => [workout.workout_date, workout]));
+  const bodyLogsByDate = new Map(bodyLogs.map((entry) => [entry.log_date, entry]));
+  const days = Array.from({ length: 7 }, (_item, index) => addDays(weekStart, index));
+
+  return (
+    <div className="week-grid">
+      {days.map((day) => {
+        const key = dateKey(day);
+        const log = logsByDate.get(key);
+        const bodyLog = bodyLogsByDate.get(key);
+        const didWorkout = Boolean(log?.did_workout || log?.exercises?.length);
+        return (
+          <button
+            key={key}
+            className={`week-day ${selectedDate === key ? "selected" : ""} ${didWorkout ? "trained" : "rest"}`}
+            onClick={() => setSelectedDate(key)}
+          >
+            <strong>
+              <span>{day.toLocaleDateString(undefined, { weekday: "short" })}</span>
+              {day.getDate()}
+            </strong>
+            <div>
+              <b>{didWorkout ? log.split : "No Gym"}</b>
+              <small>{log?.steps ? formatCalendarSteps(log.steps) : "--"}</small>
+              <small>{bodyLog ? `${Number(bodyLog.weight).toFixed(1)} kg` : "--"}</small>
+            </div>
+          </button>
+        );
+      })}
+    </div>
   );
 }
 
@@ -671,8 +779,13 @@ function CalendarGrid({ month, workouts, bodyLogs, selectedDate, setSelectedDate
           >
             <strong>{day.getDate()}</strong>
             <span className="calendar-workout">{didWorkout ? log.split : isSaved ? "Rest" : ""}</span>
-            <span className="calendar-metric">{hasSteps ? formatCalendarSteps(log.steps) : "No steps"}</span>
-            <small>{bodyLog ? `${Number(bodyLog.weight).toFixed(1)} kg` : "No weight"}</small>
+            <span className="calendar-metric">{hasSteps ? formatCalendarSteps(log.steps) : ""}</span>
+            <small>{bodyLog ? `${Number(bodyLog.weight).toFixed(1)} kg` : ""}</small>
+            <span className="calendar-dots" aria-label={`${didWorkout ? "Workout logged" : "No workout"}, ${hasSteps ? "steps logged" : "no steps"}, ${bodyLog ? "weight logged" : "no weight"}`}>
+              <i className={didWorkout ? "active workout" : ""}></i>
+              <i className={hasSteps ? "active steps" : ""}></i>
+              <i className={bodyLog ? "active weight" : ""}></i>
+            </span>
           </button>
         );
       })}
@@ -1088,12 +1201,77 @@ function formatSet(set, trackingType = "weighted") {
 
 function formatCalendarSteps(steps) {
   const count = Number(steps || 0);
-  if (count >= 1000) return `${(count / 1000).toFixed(1)}k steps`;
-  return `${count.toLocaleString()} steps`;
+  if (count >= 1000) return `${(count / 1000).toFixed(1)}k`;
+  return count.toLocaleString();
+}
+
+function buildMonthExport({ month, workouts, bodyLogs, userId }) {
+  const start = startOfMonth(month);
+  const end = new Date(start.getFullYear(), start.getMonth() + 1, 0);
+  const monthKey = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, "0")}`;
+  const workoutsByDate = new Map(workouts.map((workout) => [workout.workout_date, workout]));
+  const bodyLogsByDate = new Map(bodyLogs.map((entry) => [entry.log_date, entry]));
+  const days = Array.from({ length: end.getDate() }, (_item, index) => {
+    const day = addDays(start, index);
+    const key = dateKey(day);
+    const workout = workoutsByDate.get(key);
+    const bodyLog = bodyLogsByDate.get(key);
+    return {
+      date: key,
+      steps: workout?.steps ?? null,
+      weight_kg: bodyLog ? Number(bodyLog.weight) : null,
+      body_fat_percent: bodyLog?.body_fat == null ? null : Number(bodyLog.body_fat),
+      gym: Boolean(workout?.did_workout || workout?.exercises?.length),
+      workout_type: workout?.split ?? null,
+      workouts: (workout?.exercises || []).map((exercise) => ({
+        name: exercise.name,
+        tracking_type: exercise.tracking_type || "weighted",
+        sets: (exercise.exercise_sets || []).map((set) => ({
+          reps: set.reps,
+          weight_lbs: set.weight == null ? null : Number(set.weight),
+          duration_minutes: set.duration_minutes == null ? null : Number(set.duration_minutes),
+          is_pr: Boolean(set.is_pr),
+          logged_at: set.logged_at
+        }))
+      }))
+    };
+  });
+
+  return {
+    exported_at: new Date().toISOString(),
+    app: "fitness everything",
+    user_id: userId,
+    period: {
+      type: "month",
+      month: monthKey,
+      start_date: dateKey(start),
+      end_date: dateKey(end),
+      label: start.toLocaleDateString(undefined, { month: "long", year: "numeric" })
+    },
+    units: {
+      body_weight: "kg",
+      set_weight: "lbs",
+      time: "minutes"
+    },
+    days
+  };
 }
 
 function startOfMonth(date) {
   return new Date(date.getFullYear(), date.getMonth(), 1);
+}
+
+function startOfWeek(date) {
+  const start = new Date(date);
+  const day = (start.getDay() + 6) % 7;
+  start.setDate(start.getDate() - day);
+  return start;
+}
+
+function addDays(date, amount) {
+  const next = new Date(date);
+  next.setDate(next.getDate() + amount);
+  return next;
 }
 
 function addMonths(date, amount) {
@@ -1118,6 +1296,10 @@ function formatLongDate(date) {
     month: "long",
     day: "numeric"
   });
+}
+
+function formatShortDate(date) {
+  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
 export default App;
