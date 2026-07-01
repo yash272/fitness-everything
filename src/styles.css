@@ -415,8 +415,7 @@ h3 {
 .row,
 .empty,
 .day-summary,
-.mini-exercise,
-.daily-control {
+.mini-exercise {
   border: 1px solid var(--line);
   border-radius: 12px;
   background: var(--surface-card);
@@ -650,6 +649,13 @@ h3 {
 
 .add-exercise-toggle {
   width: 100%;
+}
+
+.workout-steps {
+  display: grid;
+  gap: 12px;
+  border-top: 1px solid var(--line-soft);
+  padding-top: 16px;
 }
 
 .form {
@@ -1079,45 +1085,6 @@ select:focus {
   font-size: 0.8rem;
 }
 
-.toggle-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-}
-
-.toggle-row button {
-  min-height: 44px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: var(--surface-low);
-  color: var(--muted-2);
-  font-weight: 900;
-}
-
-.toggle-row button.active {
-  border-color: var(--primary);
-  background: color-mix(in srgb, var(--primary) 14%, var(--surface-low));
-  color: var(--primary);
-}
-
-.daily-state.saved {
-  border-color: color-mix(in srgb, var(--primary) 38%, var(--line));
-}
-
-.daily-state.unsaved {
-  border-color: color-mix(in srgb, var(--danger) 24%, var(--line));
-}
-
-.daily-control-grid {
-  display: grid;
-  gap: 12px;
-}
-
-.daily-control {
-  padding: 16px;
-  background: var(--surface-low);
-}
-
 .daily-control-head {
   display: flex;
   align-items: start;
@@ -1125,7 +1092,6 @@ select:focus {
   gap: 12px;
 }
 
-.daily-control p,
 .daily-control-head p {
   margin-top: 5px;
   color: var(--muted-2);
@@ -1628,11 +1594,6 @@ select:focus {
   .stat:nth-child(5) {
     grid-column: span 6;
     min-height: 132px;
-  }
-
-  .daily-control-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    align-items: start;
   }
 
   .calendar-actions {
