@@ -832,12 +832,18 @@ function CalendarGrid({ month, workouts, bodyLogs, selectedDate, setSelectedDate
 
 function WorkoutView({ selectedDate, selectedSplit, changeSplit, exerciseForm, setExerciseForm, addExercise, exerciseNames, workoutTypes, selectedWorkout, bestBefore, repeatSet, deleteExercise, saving }) {
   const [isEditingType, setIsEditingType] = useState(false);
+  const [isAddingExercise, setIsAddingExercise] = useState(false);
   const [typeDraft, setTypeDraft] = useState(selectedSplit);
+  const workoutTypeTitle = selectedSplit ? workoutTypeLabel(selectedSplit) : "Workout Type";
 
   useEffect(() => {
     setIsEditingType(false);
     setTypeDraft(selectedSplit);
   }, [selectedSplit]);
+
+  useEffect(() => {
+    setIsAddingExercise(false);
+  }, [selectedDate]);
 
   async function saveWorkoutType(event) {
     event.preventDefault();
@@ -871,8 +877,8 @@ function WorkoutView({ selectedDate, selectedSplit, changeSplit, exerciseForm, s
       <form className="panel-section form" onSubmit={saveWorkoutType}>
         <div className="daily-control-head">
           <div>
-            <h2>Workout Type</h2>
-            <p>{selectedDate === todayKey() ? "Today" : formatLongDate(selectedDate)} - {selectedSplit || "No type set"}</p>
+            <h2>{workoutTypeTitle}</h2>
+            <p>{selectedSplit ? selectedDate === todayKey() ? "Today" : formatLongDate(selectedDate) : `No type set for ${selectedDate === todayKey() ? "today" : formatLongDate(selectedDate)}`}</p>
           </div>
           {!isEditingType ? (
             <button type="button" className="secondary mini" onClick={() => setIsEditingType(true)}>Edit</button>
@@ -903,58 +909,72 @@ function WorkoutView({ selectedDate, selectedSplit, changeSplit, exerciseForm, s
         ) : null}
       </form>
 
-      <form className="panel-section form" onSubmit={addExercise}>
-        <h2>Add Exercise</h2>
-        <label>
-          Exercise
-          <input value={exerciseForm.name} list="exercise-options" placeholder="Bench Press" onChange={(event) => setExerciseForm({ ...exerciseForm, name: event.target.value })} />
-          <datalist id="exercise-options">
-            {exerciseNames.map((name) => <option key={name} value={name} />)}
-          </datalist>
-        </label>
-        <div className="mode-grid">
-          {Object.entries(TRACKING_MODES).map(([mode, label]) => (
-            <button
-              type="button"
-              key={mode}
-              className={exerciseForm.trackingType === mode ? "active" : ""}
-              onClick={() => setExerciseForm({ ...exerciseForm, trackingType: mode, sets: [defaultSetForMode(mode)] })}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-        <div className="set-editor">
-          {exerciseForm.sets.map((set, index) => (
-            <div className={`set-input-row ${exerciseForm.trackingType}`} key={index}>
-              <span>{index + 1}</span>
-              {exerciseForm.trackingType !== "time" ? (
-                <label>
-                  Reps
-                  <input type="number" min="1" inputMode="numeric" value={set.reps} onChange={(event) => updateSet(index, "reps", event.target.value)} />
-                </label>
-              ) : null}
-              {exerciseForm.trackingType === "weighted" ? (
-                <label>
-                  Lbs
-                  <input type="number" min="0" step="2.5" inputMode="decimal" value={set.weight} placeholder="135" onChange={(event) => updateSet(index, "weight", event.target.value)} />
-                </label>
-              ) : null}
-              {exerciseForm.trackingType === "time" ? (
-                <label>
-                  Minutes
-                  <input type="number" min="1" step="1" inputMode="numeric" value={set.duration} placeholder="45" onChange={(event) => updateSet(index, "duration", event.target.value)} />
-                </label>
-              ) : null}
-              <button type="button" className="danger icon-only" onClick={() => removeSetRow(index)} disabled={exerciseForm.sets.length === 1} aria-label={`Remove set ${index + 1}`} title={`Remove set ${index + 1}`}>
-                <Trash2 size={16} />
-              </button>
+      {isAddingExercise ? (
+        <form className="panel-section form" onSubmit={addExercise}>
+          <div className="daily-control-head">
+            <div>
+              <h2>Add Exercise</h2>
+              <p>{selectedSplit ? `Add to ${workoutTypeLabel(selectedSplit)}` : "Choose an exercise and set style"}</p>
             </div>
-          ))}
-          <button type="button" className="secondary" onClick={addSetRow}><Plus size={17} />Add Set</button>
-        </div>
-        <button className="primary" disabled={saving}><Plus size={18} />Add Exercise</button>
-      </form>
+            <button type="button" className="secondary mini" onClick={() => setIsAddingExercise(false)}>Close</button>
+          </div>
+          <label>
+            Exercise
+            <input value={exerciseForm.name} list="exercise-options" placeholder="Bench Press" onChange={(event) => setExerciseForm({ ...exerciseForm, name: event.target.value })} />
+            <datalist id="exercise-options">
+              {exerciseNames.map((name) => <option key={name} value={name} />)}
+            </datalist>
+          </label>
+          <div className="mode-grid">
+            {Object.entries(TRACKING_MODES).map(([mode, label]) => (
+              <button
+                type="button"
+                key={mode}
+                className={exerciseForm.trackingType === mode ? "active" : ""}
+                onClick={() => setExerciseForm({ ...exerciseForm, trackingType: mode, sets: [defaultSetForMode(mode)] })}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <div className="set-editor">
+            {exerciseForm.sets.map((set, index) => (
+              <div className={`set-input-row ${exerciseForm.trackingType}`} key={index}>
+                <span>{index + 1}</span>
+                {exerciseForm.trackingType !== "time" ? (
+                  <label>
+                    Reps
+                    <input type="number" min="1" inputMode="numeric" value={set.reps} onChange={(event) => updateSet(index, "reps", event.target.value)} />
+                  </label>
+                ) : null}
+                {exerciseForm.trackingType === "weighted" ? (
+                  <label>
+                    Lbs
+                    <input type="number" min="0" step="2.5" inputMode="decimal" value={set.weight} placeholder="135" onChange={(event) => updateSet(index, "weight", event.target.value)} />
+                  </label>
+                ) : null}
+                {exerciseForm.trackingType === "time" ? (
+                  <label>
+                    Minutes
+                    <input type="number" min="1" step="1" inputMode="numeric" value={set.duration} placeholder="45" onChange={(event) => updateSet(index, "duration", event.target.value)} />
+                  </label>
+                ) : null}
+                <button type="button" className="danger icon-only" onClick={() => removeSetRow(index)} disabled={exerciseForm.sets.length === 1} aria-label={`Remove set ${index + 1}`} title={`Remove set ${index + 1}`}>
+                  <Trash2 size={16} />
+                </button>
+              </div>
+            ))}
+            <button type="button" className="secondary" onClick={addSetRow}><Plus size={17} />Add Set</button>
+          </div>
+          <button className="primary" disabled={saving}><Plus size={18} />Add Exercise</button>
+        </form>
+      ) : (
+        <section className="panel-section add-exercise-prompt">
+          <button type="button" className="primary add-exercise-toggle" onClick={() => setIsAddingExercise(true)}>
+            <Plus size={18} />Add Exercise
+          </button>
+        </section>
+      )}
 
       <section className="panel-section">
         <h2>{selectedDate === todayKey() ? "Today's Workout" : `${formatLongDate(selectedDate)} Workout`}</h2>

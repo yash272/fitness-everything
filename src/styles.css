@@ -644,6 +644,14 @@ h3 {
   gap: 8px;
 }
 
+.add-exercise-prompt {
+  padding: 12px;
+}
+
+.add-exercise-toggle {
+  width: 100%;
+}
+
 .form {
   display: grid;
   gap: 14px;
