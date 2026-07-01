@@ -862,6 +862,23 @@ canvas {
   text-transform: uppercase;
 }
 
+.workout-date-panel .daily-control-head {
+  align-items: center;
+}
+
+.date-stepper {
+  display: grid;
+  grid-template-columns: auto minmax(150px, 1fr) auto;
+  gap: 8px;
+  width: min(100%, 360px);
+  align-items: center;
+}
+
+.date-stepper .mini {
+  width: 42px;
+  padding: 0;
+}
+
 .saved-day {
   justify-content: space-between;
   gap: 10px;
@@ -1221,6 +1238,15 @@ canvas {
   .section-head {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .workout-date-panel .daily-control-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .date-stepper {
+    width: 100%;
   }
 
   .segmented {

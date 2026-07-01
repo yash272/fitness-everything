@@ -36,12 +36,12 @@ function Tracker() {
   const userId = import.meta.env.VITE_PERSONAL_USER_ID;
   const [activeView, setActiveView] = useState("dashboard");
   const [theme, setTheme] = useState(() => localStorage.getItem("fitness-theme") || "dark");
-  const [selectedSplit, setSelectedSplit] = useState("Push");
   const [range, setRange] = useState(30);
   const [workouts, setWorkouts] = useState([]);
   const [bodyLogs, setBodyLogs] = useState([]);
   const [selectedDate, setSelectedDate] = useState(todayKey());
   const [calendarMonth, setCalendarMonth] = useState(startOfMonth(new Date()));
+  const [calendarMode, setCalendarMode] = useState(() => localStorage.getItem("fitness-calendar-mode") === "month" ? "month" : "week");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [exerciseForm, setExerciseForm] = useState({ name: "", trackingType: "weighted", sets: [{ reps: "10", weight: "", duration: "" }] });
@@ -54,11 +54,16 @@ function Tracker() {
     localStorage.setItem("fitness-theme", theme);
   }, [theme]);
 
+  useEffect(() => {
+    localStorage.setItem("fitness-calendar-mode", calendarMode);
+  }, [calendarMode]);
+
   useEffect(() => () => {
     if (exportFile?.url) URL.revokeObjectURL(exportFile.url);
   }, [exportFile]);
 
   const todayWorkout = useMemo(() => workouts.find((workout) => workout.workout_date === todayKey()), [workouts]);
+  const selectedWorkout = useMemo(() => workouts.find((workout) => workout.workout_date === selectedDate), [workouts, selectedDate]);
   const exerciseNames = useMemo(() => {
     const names = new Set(Object.values(DEFAULT_EXERCISES).flat());
     workouts.forEach((workout) => workout.exercises?.forEach((exercise) => names.add(exercise.name)));
@@ -67,7 +72,8 @@ function Tracker() {
   const workoutTypes = useMemo(() => {
     const types = new Set(DEFAULT_WORKOUT_TYPES);
     workouts.forEach((workout) => {
-      if (workout.split) types.add(workout.split);
+      const type = workoutTypeForEdit(workout);
+      if (type) types.add(type);
     });
     return [...types].sort((a, b) => a.localeCompare(b));
   }, [workouts]);
@@ -114,7 +120,6 @@ function Tracker() {
       }));
       setWorkouts(normalized);
       setBodyLogs(bodyResult.data);
-      setSelectedSplit(normalized.find((workout) => workout.workout_date === todayKey())?.split || "Push");
     }
     setLoading(false);
   }, [userId]);
@@ -123,10 +128,10 @@ function Tracker() {
     loadData();
   }, [loadData]);
 
-  async function ensureWorkoutForDate(date = todayKey(), split = selectedSplit, fields = {}) {
+  async function ensureWorkoutForDate(date = todayKey(), split, fields = {}) {
     const existing = workouts.find((workout) => workout.workout_date === date);
     if (existing) {
-      const patch = { split, ...fields, updated_at: new Date().toISOString() };
+      const patch = { ...(split === undefined ? {} : { split }), ...fields, updated_at: new Date().toISOString() };
       await supabase.from("workouts").update(patch).eq("id", existing.id);
       const updated = { ...existing, ...patch };
       setWorkouts((items) => sortWorkouts(items.map((item) => item.id === existing.id ? updated : item)));
@@ -135,7 +140,7 @@ function Tracker() {
 
     const { data, error } = await supabase
       .from("workouts")
-      .insert({ user_id: userId, workout_date: date, split, ...fields })
+      .insert({ user_id: userId, workout_date: date, split: split ?? "", ...fields })
       .select("id,user_id,workout_date,split,did_workout,steps,created_at,updated_at,exercises(id,user_id,name,tracking_type,created_at,exercise_sets(id,user_id,reps,weight,duration_minutes,is_pr,logged_at))")
       .single();
 
@@ -145,14 +150,16 @@ function Tracker() {
     return next;
   }
 
-  async function ensureTodayWorkout(split = selectedSplit, fields = {}) {
-    return ensureWorkoutForDate(todayKey(), split, fields);
+  function selectDate(date) {
+    if (!date) return;
+    setSelectedDate(date);
+    setCalendarMonth(startOfMonth(new Date(`${date}T12:00:00`)));
   }
 
-  function bestBefore(exerciseName, trackingType = "weighted") {
+  function bestBefore(exerciseName, trackingType = "weighted", beforeDate = todayKey()) {
     let best = null;
     workouts.forEach((workout) => {
-      if (workout.workout_date >= todayKey()) return;
+      if (workout.workout_date >= beforeDate) return;
       workout.exercises?.forEach((exercise) => {
         if (exercise.name.toLowerCase() !== exerciseName.toLowerCase()) return;
         const type = exercise.tracking_type || "weighted";
@@ -179,8 +186,9 @@ function Tracker() {
     setSaving(true);
     setNotice("");
     try {
-      const workout = await ensureTodayWorkout(selectedSplit, { did_workout: true });
-      const previous = bestBefore(name, trackingType);
+      const workoutType = workoutTypeForEdit(selectedWorkout);
+      const workout = await ensureWorkoutForDate(selectedDate, workoutType, { did_workout: true });
+      const previous = bestBefore(name, trackingType, selectedDate);
 
       const { data: exercise, error: exerciseError } = await supabase
         .from("exercises")
@@ -217,7 +225,8 @@ function Tracker() {
     const last = exercise.exercise_sets?.at(-1);
     if (!last) return;
     const trackingType = exercise.tracking_type || "weighted";
-    const previous = bestBefore(exercise.name, trackingType);
+    const workoutDate = workouts.find((workout) => workout.exercises?.some((item) => item.id === exercise.id))?.workout_date || selectedDate;
+    const previous = bestBefore(exercise.name, trackingType, workoutDate);
     const repeated = {
       reps: last.reps,
       weight: last.weight,
@@ -285,9 +294,8 @@ function Tracker() {
   }
 
   async function changeSplit(split) {
-    setSelectedSplit(split);
     try {
-      await ensureTodayWorkout(split, { did_workout: true });
+      await ensureWorkoutForDate(selectedDate, split, { did_workout: true });
     } catch (error) {
       setNotice(error.message);
     }
@@ -302,7 +310,6 @@ function Tracker() {
       if (steps !== undefined) fields.steps = steps === "" ? null : Number(steps);
 
       await ensureWorkoutForDate(date, split, fields);
-      if (date === todayKey() && didWorkout === true) setSelectedSplit(split);
       return true;
     } catch (error) {
       setNotice(error.message);
@@ -430,25 +437,28 @@ function Tracker() {
             workouts={workouts}
             bodyLogs={bodyLogs}
             selectedDate={selectedDate}
-            setSelectedDate={setSelectedDate}
+            setSelectedDate={selectDate}
             calendarMonth={calendarMonth}
             setCalendarMonth={setCalendarMonth}
+            calendarMode={calendarMode}
+            setCalendarMode={setCalendarMode}
             saveDailyLog={saveDailyLog}
-            selectedSplit={selectedSplit}
             saving={saving}
           />
         )}
 
         {!loading && activeView === "workout" && (
           <WorkoutView
-            selectedSplit={selectedSplit}
+            selectedDate={selectedDate}
+            setSelectedDate={selectDate}
+            selectedSplit={workoutTypeForEdit(selectedWorkout)}
             changeSplit={changeSplit}
             exerciseForm={exerciseForm}
             setExerciseForm={setExerciseForm}
             addExercise={addExercise}
             exerciseNames={exerciseNames}
             workoutTypes={workoutTypes}
-            todayWorkout={todayWorkout}
+            selectedWorkout={selectedWorkout}
             bestBefore={bestBefore}
             repeatSet={repeatSet}
             deleteExercise={deleteExercise}
@@ -486,7 +496,7 @@ function Dashboard({ workoutSets, todayWorkout, todayPrs, latestBody, weekDays, 
   return (
     <>
       <section className="stat-grid">
-        <Stat label="Today" value={todayWorkout?.did_workout ? todayWorkout.split : "Rest"} detail={todayWorkout?.did_workout ? `${workoutSets} sets - ${todayWorkout.exercises.length} exercises - ${todayPrs} PR sets` : "No gym logged today"} />
+        <Stat label="Today" value={todayWorkout?.did_workout ? workoutTypeLabel(todayWorkout.split) : "Rest"} detail={todayWorkout?.did_workout ? `${workoutSets} sets - ${todayWorkout.exercises.length} exercises - ${todayPrs} PR sets` : "No gym logged today"} />
         <Stat label="Latest Weight" value={latestBody ? `${Number(latestBody.weight).toFixed(1)} kg` : "-- kg"} detail={latestBody ? `${formatDate(latestBody.log_date)}${latestBody.body_fat ? ` - ${latestBody.body_fat}% body fat` : ""}` : "No weigh-in yet"} />
         <Stat label="Steps Today" value={todaySteps ? todaySteps.toLocaleString() : "--"} detail="Logged on the Daily tab" />
         <Stat label="This Week" value={`${weekDays} days`} detail="Workout days since Monday" />
@@ -527,7 +537,7 @@ function Dashboard({ workoutSets, todayWorkout, todayPrs, latestBody, weekDays, 
               <div className="row" key={pr.id}>
                 <div>
                   <strong>{pr.exercise}</strong>
-                  <span>{formatDate(pr.date)} - {pr.split}</span>
+                  <span>{formatDate(pr.date)} - {workoutTypeLabel(pr.split)}</span>
                 </div>
                 <b>{formatSet(pr, pr.trackingType)}</b>
               </div>
@@ -540,10 +550,9 @@ function Dashboard({ workoutSets, todayWorkout, todayPrs, latestBody, weekDays, 
   );
 }
 
-function DailyView({ workouts, bodyLogs, selectedDate, setSelectedDate, calendarMonth, setCalendarMonth, saveDailyLog, selectedSplit, saving }) {
+function DailyView({ workouts, bodyLogs, selectedDate, setSelectedDate, calendarMonth, setCalendarMonth, calendarMode, setCalendarMode, saveDailyLog, saving }) {
   const selectedLog = workouts.find((workout) => workout.workout_date === selectedDate);
   const selectedBodyLog = bodyLogs.find((entry) => entry.log_date === selectedDate);
-  const [calendarMode, setCalendarMode] = useState("week");
   const [isEditingSteps, setIsEditingSteps] = useState(false);
   const [stepsDraft, setStepsDraft] = useState(selectedLog?.steps ?? "");
   const selectedDateObject = useMemo(() => new Date(`${selectedDate}T12:00:00`), [selectedDate]);
@@ -565,7 +574,7 @@ function DailyView({ workouts, bodyLogs, selectedDate, setSelectedDate, calendar
     await saveDailyLog({
       date: selectedDate,
       didWorkout,
-      split: selectedLog?.split || selectedSplit || "Push"
+      split: didWorkout ? workoutTypeForEdit(selectedLog) : undefined
     });
   }
 
@@ -573,8 +582,7 @@ function DailyView({ workouts, bodyLogs, selectedDate, setSelectedDate, calendar
     event.preventDefault();
     const saved = await saveDailyLog({
       date: selectedDate,
-      steps: stepsDraft,
-      split: selectedLog?.split || selectedSplit || "Push"
+      steps: stepsDraft
     });
     if (saved) setIsEditingSteps(false);
   }
@@ -635,7 +643,7 @@ function DailyView({ workouts, bodyLogs, selectedDate, setSelectedDate, calendar
           <div className="daily-control form">
             <div>
               <h3>Gym Status</h3>
-              <p>{selectedLog?.did_workout ? `${selectedLog.split} logged` : "No gym logged"}</p>
+              <p>{selectedLog?.did_workout ? `${workoutTypeLabel(selectedLog.split)} logged` : "No gym logged"}</p>
             </div>
             <div className="toggle-row">
               <button type="button" className={selectedLog?.did_workout ? "active" : ""} onClick={() => setGymStatus(true)} disabled={saving}>Gym</button>
@@ -705,7 +713,7 @@ function WeekGrid({ weekStart, workouts, bodyLogs, selectedDate, setSelectedDate
               {day.getDate()}
             </strong>
             <div>
-              <b>{didWorkout ? log.split : "No Gym"}</b>
+              <b>{didWorkout ? workoutTypeLabel(log.split, "Gym") : "No Gym"}</b>
               <small>{log?.steps ? formatCalendarSteps(log.steps) : "--"}</small>
               <small>{bodyLog ? `${Number(bodyLog.weight).toFixed(1)} kg` : "--"}</small>
             </div>
@@ -738,7 +746,7 @@ function DayWorkoutDetails({ workout, bodyLog }) {
   return (
     <div className="day-detail">
       <div className="day-summary">
-        <strong>{workout.split}</strong>
+        <strong>{workoutTypeLabel(workout.split)}</strong>
         <span>{dailyMeta(workout, bodyLog)}</span>
       </div>
       {workout.exercises?.length ? workout.exercises.map((exercise) => (
@@ -750,7 +758,7 @@ function DayWorkoutDetails({ workout, bodyLog }) {
             ))}
           </div>
         </article>
-      )) : <Empty text={`${workout.split} day saved. No exercise sets logged yet.`} />}
+      )) : <Empty text={`${workoutTypeLabel(workout.split)} day saved. No exercise sets logged yet.`} />}
     </div>
   );
 }
@@ -793,9 +801,10 @@ function CalendarGrid({ month, workouts, bodyLogs, selectedDate, setSelectedDate
   );
 }
 
-function WorkoutView({ selectedSplit, changeSplit, exerciseForm, setExerciseForm, addExercise, exerciseNames, workoutTypes, todayWorkout, bestBefore, repeatSet, deleteExercise, saving }) {
+function WorkoutView({ selectedDate, setSelectedDate, selectedSplit, changeSplit, exerciseForm, setExerciseForm, addExercise, exerciseNames, workoutTypes, selectedWorkout, bestBefore, repeatSet, deleteExercise, saving }) {
   const [isEditingType, setIsEditingType] = useState(false);
   const [typeDraft, setTypeDraft] = useState(selectedSplit);
+  const selectedDateObject = useMemo(() => new Date(`${selectedDate}T12:00:00`), [selectedDate]);
 
   useEffect(() => {
     setIsEditingType(false);
@@ -829,13 +838,35 @@ function WorkoutView({ selectedSplit, changeSplit, exerciseForm, setExerciseForm
     });
   }
 
+  function moveWorkoutDate(amount) {
+    setSelectedDate(dateKey(addDays(selectedDateObject, amount)));
+  }
+
   return (
     <>
+      <section className="panel-section workout-date-panel">
+        <div className="daily-control-head">
+          <div>
+            <h2>Workout Date</h2>
+            <p>{selectedDate === todayKey() ? "Today" : formatLongDate(selectedDate)}</p>
+          </div>
+          <div className="date-stepper">
+            <button type="button" className="secondary mini" onClick={() => moveWorkoutDate(-1)} aria-label="Previous day" title="Previous day">
+              <ChevronLeft size={14} />
+            </button>
+            <input type="date" value={selectedDate} onChange={(event) => setSelectedDate(event.target.value)} aria-label="Workout date" />
+            <button type="button" className="secondary mini" onClick={() => moveWorkoutDate(1)} aria-label="Next day" title="Next day">
+              <ChevronRight size={14} />
+            </button>
+          </div>
+        </div>
+      </section>
+
       <form className="panel-section form" onSubmit={saveWorkoutType}>
         <div className="daily-control-head">
           <div>
             <h2>Workout Type</h2>
-            <p>{selectedSplit}</p>
+            <p>{selectedDate === todayKey() ? "Today" : formatLongDate(selectedDate)} - {selectedSplit || "No type set"}</p>
           </div>
           {!isEditingType ? (
             <button type="button" className="secondary mini" onClick={() => setIsEditingType(true)}>Edit</button>
@@ -920,11 +951,11 @@ function WorkoutView({ selectedSplit, changeSplit, exerciseForm, setExerciseForm
       </form>
 
       <section className="panel-section">
-        <h2>Today's Workout</h2>
+        <h2>{selectedDate === todayKey() ? "Today's Workout" : `${formatLongDate(selectedDate)} Workout`}</h2>
         <div className="exercise-list">
-          {todayWorkout?.exercises?.length ? todayWorkout.exercises.map((exercise) => {
+          {selectedWorkout?.exercises?.length ? selectedWorkout.exercises.map((exercise) => {
             const trackingType = exercise.tracking_type || "weighted";
-            const previous = bestBefore(exercise.name, trackingType);
+            const previous = bestBefore(exercise.name, trackingType, selectedDate);
             const prCount = exercise.exercise_sets.filter((set) => set.is_pr).length;
             return (
               <article className="exercise-card" key={exercise.id}>
@@ -945,12 +976,12 @@ function WorkoutView({ selectedSplit, changeSplit, exerciseForm, setExerciseForm
                   ))}
                 </div>
                 <div className="card-actions">
-                  <button className="secondary" onClick={() => repeatSet(exercise)} disabled={saving}><RefreshCw size={17} />Repeat Set</button>
-                  <button className="danger" onClick={() => deleteExercise(exercise.id)} disabled={saving} aria-label={`Delete ${exercise.name}`} title={`Delete ${exercise.name}`}><Trash2 size={17} /></button>
+                  <button type="button" className="secondary" onClick={() => repeatSet(exercise)} disabled={saving}><RefreshCw size={17} />Repeat Set</button>
+                  <button type="button" className="danger" onClick={() => deleteExercise(exercise.id)} disabled={saving} aria-label={`Delete ${exercise.name}`} title={`Delete ${exercise.name}`}><Trash2 size={17} /></button>
                 </div>
               </article>
             );
-          }) : <Empty text="Choose a split and add your first exercise. The first session becomes your baseline." />}
+          }) : <Empty text="Choose a type and add exercises for this date." />}
         </div>
       </section>
     </>
@@ -1131,6 +1162,19 @@ function workoutDaysWithin(workouts, startDate, endDate) {
   return workouts.filter((workout) => workout.workout_date >= startDate && workout.workout_date <= endDate && (workout.did_workout || workout.exercises?.length)).length;
 }
 
+function hasWorkoutActivity(workout) {
+  return Boolean(workout?.did_workout || workout?.exercises?.length);
+}
+
+function workoutTypeForEdit(workout) {
+  if (!hasWorkoutActivity(workout)) return "";
+  return workout?.split?.trim() || "";
+}
+
+function workoutTypeLabel(split, fallback = "Workout") {
+  return split?.trim() || fallback;
+}
+
 function bodyTrend(entry, logs) {
   const index = logs.findIndex((item) => item.id === entry.id);
   const previous = logs[index - 1];
@@ -1222,7 +1266,7 @@ function buildMonthExport({ month, workouts, bodyLogs, userId }) {
       weight_kg: bodyLog ? Number(bodyLog.weight) : null,
       body_fat_percent: bodyLog?.body_fat == null ? null : Number(bodyLog.body_fat),
       gym: Boolean(workout?.did_workout || workout?.exercises?.length),
-      workout_type: workout?.split ?? null,
+      workout_type: workoutTypeForEdit(workout) || null,
       workouts: (workout?.exercises || []).map((exercise) => ({
         name: exercise.name,
         tracking_type: exercise.tracking_type || "weighted",
