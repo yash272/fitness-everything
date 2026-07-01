@@ -370,6 +370,8 @@ function Tracker() {
     body: { eyebrow: "Body Progress", title: "Body Metrics" }
   };
   const activeCopy = viewCopy[activeView] || viewCopy.dashboard;
+  const dateChipDate = activeView === "workout" ? selectedDate : todayKey();
+  const dateChipLabel = new Date(`${dateChipDate}T12:00:00`).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
 
   return (
     <div className="app-shell">
@@ -414,10 +416,18 @@ function Tracker() {
             <p className="eyebrow">{activeCopy.eyebrow}</p>
             <h1>{activeCopy.title}</h1>
           </div>
-          <div className="date-chip">
-            <CalendarDays size={16} />
-            {new Date().toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}
-          </div>
+          {activeView === "workout" ? (
+            <label className="date-chip date-chip-picker" title="Change workout date">
+              <CalendarDays size={16} />
+              <span>{dateChipLabel}</span>
+              <input type="date" value={selectedDate} onChange={(event) => selectDate(event.target.value)} aria-label="Workout date" />
+            </label>
+          ) : (
+            <div className="date-chip">
+              <CalendarDays size={16} />
+              {dateChipLabel}
+            </div>
+          )}
         </section>
 
         {notice && (
@@ -467,7 +477,6 @@ function Tracker() {
         {!loading && activeView === "workout" && (
           <WorkoutView
             selectedDate={selectedDate}
-            setSelectedDate={selectDate}
             selectedSplit={workoutTypeForEdit(selectedWorkout)}
             changeSplit={changeSplit}
             exerciseForm={exerciseForm}
@@ -512,36 +521,39 @@ function Tracker() {
 function Dashboard({ workoutSets, todayWorkout, todayPrs, latestBody, weekDays, monthDays, bodyLogs, range, setRange, recentPrs, todaySteps }) {
   return (
     <>
-      <section className="stat-grid">
-        <Stat label="Today" value={todayWorkout?.did_workout ? workoutTypeLabel(todayWorkout.split) : "Rest"} detail={todayWorkout?.did_workout ? `${workoutSets} sets - ${todayWorkout.exercises.length} exercises - ${todayPrs} PR sets` : "No gym logged today"} />
+      <section className="stat-grid dashboard-primary">
         <Stat label="Latest Weight" value={latestBody ? `${Number(latestBody.weight).toFixed(1)} kg` : "-- kg"} detail={latestBody ? `${formatDate(latestBody.log_date)}${latestBody.body_fat ? ` - ${latestBody.body_fat}% body fat` : ""}` : "No weigh-in yet"} />
-        <Stat label="Steps Today" value={todaySteps ? todaySteps.toLocaleString() : "--"} detail="Logged on the Daily tab" />
-        <Stat label="This Week" value={`${weekDays} days`} detail="Workout days since Monday" />
-        <Stat label="This Month" value={`${monthDays} days`} detail="Workout days this month" />
       </section>
 
-      <div className="dashboard-grid">
-        <section className="panel-section trend-panel">
-          <div className="section-head">
-            <div>
-              <h2>Weight Trend</h2>
-              <p>Consistency is the key to progress</p>
-            </div>
-            <div className="segmented">
-              {[30, 60, 90].map((days) => <button key={days} className={range === days ? "active" : ""} onClick={() => setRange(days)}>{days}D</button>)}
-            </div>
+      <section className="panel-section trend-panel">
+        <div className="section-head">
+          <div>
+            <h2>Weight Trend</h2>
+            <p>Consistency is the key to progress</p>
           </div>
-          <WeightChart logs={bodyLogs} range={range} />
-          <div className="trend-meta">
-            <div>
-              <span>Max Weight</span>
-              <strong>{bodyLogs.length ? `${Math.max(...bodyLogs.map((entry) => Number(entry.weight))).toFixed(1)} kg` : "-- kg"}</strong>
-            </div>
-            <div>
-              <span>Latest</span>
-              <strong>{latestBody ? `${Number(latestBody.weight).toFixed(1)} kg` : "-- kg"}</strong>
-            </div>
+          <div className="segmented">
+            {[30, 60, 90].map((days) => <button key={days} className={range === days ? "active" : ""} onClick={() => setRange(days)}>{days}D</button>)}
           </div>
+        </div>
+        <WeightChart logs={bodyLogs} range={range} />
+        <div className="trend-meta">
+          <div>
+            <span>Max Weight</span>
+            <strong>{bodyLogs.length ? `${Math.max(...bodyLogs.map((entry) => Number(entry.weight))).toFixed(1)} kg` : "-- kg"}</strong>
+          </div>
+          <div>
+            <span>Latest</span>
+            <strong>{latestBody ? `${Number(latestBody.weight).toFixed(1)} kg` : "-- kg"}</strong>
+          </div>
+        </div>
+      </section>
+
+      <div className="dashboard-after-grid">
+        <section className="stat-grid dashboard-support-stats">
+          <Stat label="Today" value={todayWorkout?.did_workout ? workoutTypeLabel(todayWorkout.split) : "Rest"} detail={todayWorkout?.did_workout ? `${workoutSets} sets - ${todayWorkout.exercises.length} exercises - ${todayPrs} PR sets` : "No gym logged today"} />
+          <Stat label="This Week" value={`${weekDays} days`} detail="Workout days since Monday" />
+          <Stat label="This Month" value={`${monthDays} days`} detail="Workout days this month" />
+          <Stat label="Steps Today" value={todaySteps ? todaySteps.toLocaleString() : "--"} detail="Logged on the Daily tab" />
         </section>
 
         <section className="panel-section pr-panel">
@@ -818,10 +830,9 @@ function CalendarGrid({ month, workouts, bodyLogs, selectedDate, setSelectedDate
   );
 }
 
-function WorkoutView({ selectedDate, setSelectedDate, selectedSplit, changeSplit, exerciseForm, setExerciseForm, addExercise, exerciseNames, workoutTypes, selectedWorkout, bestBefore, repeatSet, deleteExercise, saving }) {
+function WorkoutView({ selectedDate, selectedSplit, changeSplit, exerciseForm, setExerciseForm, addExercise, exerciseNames, workoutTypes, selectedWorkout, bestBefore, repeatSet, deleteExercise, saving }) {
   const [isEditingType, setIsEditingType] = useState(false);
   const [typeDraft, setTypeDraft] = useState(selectedSplit);
-  const selectedDateObject = useMemo(() => new Date(`${selectedDate}T12:00:00`), [selectedDate]);
 
   useEffect(() => {
     setIsEditingType(false);
@@ -855,30 +866,8 @@ function WorkoutView({ selectedDate, setSelectedDate, selectedSplit, changeSplit
     });
   }
 
-  function moveWorkoutDate(amount) {
-    setSelectedDate(dateKey(addDays(selectedDateObject, amount)));
-  }
-
   return (
     <>
-      <section className="panel-section workout-date-panel">
-        <div className="daily-control-head">
-          <div>
-            <h2>Workout Date</h2>
-            <p>{selectedDate === todayKey() ? "Today" : formatLongDate(selectedDate)}</p>
-          </div>
-          <div className="date-stepper">
-            <button type="button" className="secondary mini" onClick={() => moveWorkoutDate(-1)} aria-label="Previous day" title="Previous day">
-              <ChevronLeft size={14} />
-            </button>
-            <input type="date" value={selectedDate} onChange={(event) => setSelectedDate(event.target.value)} aria-label="Workout date" />
-            <button type="button" className="secondary mini" onClick={() => moveWorkoutDate(1)} aria-label="Next day" title="Next day">
-              <ChevronRight size={14} />
-            </button>
-          </div>
-        </div>
-      </section>
-
       <form className="panel-section form" onSubmit={saveWorkoutType}>
         <div className="daily-control-head">
           <div>
