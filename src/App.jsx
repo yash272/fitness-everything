@@ -366,7 +366,7 @@ function Tracker() {
   const viewCopy = {
     dashboard: { eyebrow: "Performance Hub", title: "Dashboard" },
     daily: { eyebrow: "Daily Log", title: "Training Logs" },
-    workout: { eyebrow: "Active Session", title: workoutTypeForEdit(selectedWorkout) || "Workout" },
+    workout: { eyebrow: "Active Session", title: "Workout" },
     body: { eyebrow: "Body Progress", title: "Body Metrics" }
   };
   const activeCopy = viewCopy[activeView] || viewCopy.dashboard;
