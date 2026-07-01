@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Activity, BarChart3, CalendarDays, CalendarRange, ChevronLeft, ChevronRight, Download, Dumbbell, Moon, Plus, RefreshCw, Scale, Settings, Sun, Trash2 } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Activity, BarChart3, Bolt, CalendarDays, CalendarRange, ChevronLeft, ChevronRight, Download, Dumbbell, Moon, Plus, RefreshCw, Scale, Sun, Trash2 } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "./supabaseClient";
 
 const DEFAULT_WORKOUT_TYPES = ["Push", "Pull", "Legs", "Cardio", "Sports", "Mobility"];
@@ -57,6 +57,17 @@ function Tracker() {
   useEffect(() => {
     localStorage.setItem("fitness-calendar-mode", calendarMode);
   }, [calendarMode]);
+
+  useEffect(() => {
+    const resetScroll = () => {
+      window.scrollTo(0, 0);
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    };
+    resetScroll();
+    const frame = window.requestAnimationFrame(resetScroll);
+    return () => window.cancelAnimationFrame(frame);
+  }, [activeView]);
 
   useEffect(() => () => {
     if (exportFile?.url) URL.revokeObjectURL(exportFile.url);
@@ -348,17 +359,27 @@ function Tracker() {
   const todaySteps = todayWorkout?.steps || 0;
   const navItems = [
     { id: "dashboard", label: "Dashboard", icon: BarChart3 },
-    { id: "daily", label: "Daily", icon: CalendarDays },
+    { id: "daily", label: "Logs", icon: CalendarDays },
     { id: "workout", label: "Workout", icon: Dumbbell },
-    { id: "body", label: "Body", icon: Scale }
+    { id: "body", label: "Progress", icon: Scale }
   ];
+  const viewCopy = {
+    dashboard: { eyebrow: "Performance Hub", title: "Dashboard" },
+    daily: { eyebrow: "Daily Log", title: "Training Logs" },
+    workout: { eyebrow: "Active Session", title: workoutTypeForEdit(selectedWorkout) || "Workout" },
+    body: { eyebrow: "Body Progress", title: "Body Metrics" }
+  };
+  const activeCopy = viewCopy[activeView] || viewCopy.dashboard;
 
   return (
     <div className="app-shell">
       <header className="topbar">
         <div className="brand">
-          <Dumbbell size={23} strokeWidth={2.5} />
-          <strong>fitness everything</strong>
+          <span className="brand-mark"><Bolt size={23} strokeWidth={2.8} /></span>
+          <span>
+            <strong>Disciplined</strong>
+            <small>Training Log</small>
+          </span>
         </div>
         <nav className="desktop-tabs" aria-label="Primary">
           {navItems.map((item) => {
@@ -376,9 +397,6 @@ function Tracker() {
             <Download size={18} />
             <span>Export</span>
           </button>
-          <button className="icon-button desktop-only" aria-label="Settings" title="Settings">
-            <Settings size={18} />
-          </button>
           <button
             className="icon-button"
             onClick={() => setTheme((current) => current === "dark" ? "light" : "dark")}
@@ -393,8 +411,8 @@ function Tracker() {
       <main className="app">
         <section className="hero-row">
           <div>
-            <p className="eyebrow">Fitness Everything</p>
-            <h1>Track the next set.</h1>
+            <p className="eyebrow">{activeCopy.eyebrow}</p>
+            <h1>{activeCopy.title}</h1>
           </div>
           <div className="date-chip">
             <CalendarDays size={16} />
@@ -428,7 +446,6 @@ function Tracker() {
             setRange={setRange}
             recentPrs={recentPrs}
             todaySteps={todaySteps}
-            theme={theme}
           />
         )}
 
@@ -492,7 +509,7 @@ function Tracker() {
   );
 }
 
-function Dashboard({ workoutSets, todayWorkout, todayPrs, latestBody, weekDays, monthDays, bodyLogs, range, setRange, recentPrs, todaySteps, theme }) {
+function Dashboard({ workoutSets, todayWorkout, todayPrs, latestBody, weekDays, monthDays, bodyLogs, range, setRange, recentPrs, todaySteps }) {
   return (
     <>
       <section className="stat-grid">
@@ -514,7 +531,7 @@ function Dashboard({ workoutSets, todayWorkout, todayPrs, latestBody, weekDays, 
               {[30, 60, 90].map((days) => <button key={days} className={range === days ? "active" : ""} onClick={() => setRange(days)}>{days}D</button>)}
             </div>
           </div>
-          <WeightChart logs={bodyLogs} range={range} theme={theme} />
+          <WeightChart logs={bodyLogs} range={range} />
           <div className="trend-meta">
             <div>
               <span>Max Weight</span>
@@ -1024,83 +1041,61 @@ function BodyView({ bodyForm, setBodyForm, saveBody, bodyLogs, saving }) {
   );
 }
 
-function WeightChart({ logs, range, theme }) {
-  const canvasRef = useRef(null);
+function WeightChart({ logs, range }) {
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - range + 1);
+  const points = logs
+    .filter((entry) => entry.log_date >= dateKey(cutoff))
+    .slice()
+    .sort((a, b) => a.log_date.localeCompare(b.log_date));
 
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext("2d");
-    const width = canvas.width;
-    const height = canvas.height;
-    const styles = getComputedStyle(document.documentElement);
-    const chartBg = styles.getPropertyValue("--chart-bg").trim() || "#141820";
-    const chartGrid = styles.getPropertyValue("--chart-grid").trim() || "#2a303c";
-    const chartLine = styles.getPropertyValue("--chart-line").trim() || "#7dd3fc";
-    const chartPoint = styles.getPropertyValue("--chart-point").trim() || "#a7f3d0";
-    const chartText = styles.getPropertyValue("--chart-text").trim() || "#cbd3df";
-    const chartMuted = styles.getPropertyValue("--chart-muted").trim() || "#9aa4b2";
+  if (points.length < 2) {
+    return (
+      <div className="chart empty-chart" role="img" aria-label="Weight trend chart">
+        <span>Log at least 2 weigh-ins</span>
+      </div>
+    );
+  }
 
-    ctx.clearRect(0, 0, width, height);
-    ctx.fillStyle = chartBg;
-    ctx.fillRect(0, 0, width, height);
-
-    const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - range + 1);
-    const points = logs.filter((entry) => entry.log_date >= dateKey(cutoff));
-
-    ctx.fillStyle = chartMuted;
-    ctx.font = "24px Sora, sans-serif";
-    if (points.length < 2) {
-      ctx.fillText("Log at least 2 weigh-ins", 28, 68);
-      return;
-    }
-
-    const weights = points.map((point) => Number(point.weight));
-    const min = Math.min(...weights) - 0.5;
-    const max = Math.max(...weights) + 0.5;
-    const pad = 36;
-    const xFor = (index) => pad + (index / (points.length - 1)) * (width - pad * 2);
-    const yFor = (value) => height - pad - ((value - min) / (max - min || 1)) * (height - pad * 2);
-
-    ctx.strokeStyle = chartGrid;
-    ctx.lineWidth = 2;
-    for (let i = 0; i < 4; i += 1) {
-      const y = pad + (i / 3) * (height - pad * 2);
-      ctx.beginPath();
-      ctx.moveTo(pad, y);
-      ctx.lineTo(width - pad, y);
-      ctx.stroke();
-    }
-
-    ctx.strokeStyle = chartLine;
-    ctx.lineWidth = 5;
-    ctx.lineJoin = "round";
-    ctx.lineCap = "round";
-    ctx.beginPath();
-    points.forEach((point, index) => {
-      const x = xFor(index);
-      const y = yFor(Number(point.weight));
-      if (index === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
-    });
-    ctx.stroke();
-
-    points.forEach((point, index) => {
-      ctx.fillStyle = chartPoint;
-      ctx.beginPath();
-      ctx.arc(xFor(index), yFor(Number(point.weight)), 6, 0, Math.PI * 2);
-      ctx.fill();
-    });
-
-    ctx.fillStyle = chartText;
-    ctx.font = "22px Sora, sans-serif";
-    ctx.fillText(`${max.toFixed(1)} kg`, pad, 28);
-    ctx.fillText(`${min.toFixed(1)} kg`, pad, height - 12);
-  }, [logs, range, theme]);
+  const weights = points.map((point) => Number(point.weight));
+  const min = Math.min(...weights) - 0.5;
+  const max = Math.max(...weights) + 0.5;
+  const mid = (min + max) / 2;
+  const xFor = (index) => (index / (points.length - 1)) * 100;
+  const yFor = (value) => 88 - ((value - min) / (max - min || 1)) * 72;
+  const svgPoints = points.map((point, index) => `${xFor(index).toFixed(2)},${yFor(Number(point.weight)).toFixed(2)}`).join(" ");
+  const areaPoints = `0,100 ${svgPoints} 100,100`;
+  const lastPoint = points[points.length - 1];
+  const labelIndexes = [...new Set([
+    0,
+    Math.floor((points.length - 1) * 0.25),
+    Math.floor((points.length - 1) * 0.5),
+    Math.floor((points.length - 1) * 0.75),
+    points.length - 1
+  ])];
 
   return (
-    <div className="chart">
-      <canvas ref={canvasRef} width="680" height="360" aria-label="Weight trend chart" />
+    <div className="chart graph-chart" role="img" aria-label={`Weight trend from ${formatDate(points[0].log_date)} to ${formatDate(lastPoint.log_date)}`}>
+      <div className="chart-y-axis" aria-hidden="true">
+        <span>{max.toFixed(1)} kg</span>
+        <span>{mid.toFixed(1)} kg</span>
+        <span>{min.toFixed(1)} kg</span>
+      </div>
+      <div className="chart-plot" aria-hidden="true">
+        <svg className="chart-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+          <polygon className="chart-area" points={areaPoints} />
+          <polyline className="chart-line" points={svgPoints} />
+        </svg>
+        <span
+          className="chart-point"
+          style={{ left: `${xFor(points.length - 1)}%`, top: `${yFor(Number(lastPoint.weight))}%` }}
+        />
+      </div>
+      <div className="chart-x-axis" aria-hidden="true">
+        {labelIndexes.map((index) => (
+          <span key={`${points[index].log_date}-${index}`}>{formatDate(points[index].log_date)}</span>
+        ))}
+      </div>
     </div>
   );
 }
