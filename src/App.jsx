@@ -412,7 +412,7 @@ function Tracker() {
         <div className="brand">
           <span className="brand-mark"><Bolt size={23} strokeWidth={2.8} /></span>
           <span>
-            <strong>Disciplined</strong>
+            <strong>fitness</strong>
             <small>Training Log</small>
           </span>
         </div>
