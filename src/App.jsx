@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Activity, BarChart3, Bolt, CalendarDays, CalendarRange, ChevronLeft, ChevronRight, Download, Dumbbell, Moon, Plus, RefreshCw, Scale, Sun, Trash2 } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "./supabaseClient";
 
@@ -46,10 +46,12 @@ function Tracker() {
   const [calendarMode, setCalendarMode] = useState(() => localStorage.getItem("fitness-calendar-mode") === "month" ? "month" : "week");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [isWorkoutDatePickerOpen, setIsWorkoutDatePickerOpen] = useState(false);
   const [exerciseForm, setExerciseForm] = useState({ name: "", trackingType: "weighted", sets: [{ reps: "10", weight: "", duration: "" }] });
   const [bodyForm, setBodyForm] = useState({ weight: "", bodyFat: "" });
   const [notice, setNotice] = useState("");
   const [exportFile, setExportFile] = useState(null);
+  const workoutDateInputRef = useRef(null);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -141,6 +143,20 @@ function Tracker() {
     loadData();
   }, [loadData]);
 
+  useEffect(() => {
+    if (!isWorkoutDatePickerOpen) return undefined;
+    const frame = window.requestAnimationFrame(() => {
+      const input = workoutDateInputRef.current;
+      input?.focus({ preventScroll: true });
+      try {
+        input?.showPicker?.();
+      } catch {
+        input?.focus({ preventScroll: true });
+      }
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [isWorkoutDatePickerOpen]);
+
   async function ensureWorkoutForDate(date = todayKey(), split, fields = {}) {
     if (isFutureDateKey(date)) throw new Error(FUTURE_WORKOUT_NOTICE);
 
@@ -176,12 +192,15 @@ function Tracker() {
     if (isFutureDateKey(date)) {
       setNotice(FUTURE_WORKOUT_NOTICE);
       selectDate(todayKey());
+      setIsWorkoutDatePickerOpen(false);
       return;
     }
     selectDate(date);
+    setIsWorkoutDatePickerOpen(false);
   }
 
   function changeView(view) {
+    setIsWorkoutDatePickerOpen(false);
     if (view === "workout" && isFutureDateKey(selectedDate)) {
       setNotice(FUTURE_WORKOUT_NOTICE);
       selectDate(todayKey());
@@ -450,11 +469,19 @@ function Tracker() {
             <h1>{activeCopy.title}</h1>
           </div>
           {activeView === "workout" ? (
-            <label className="date-chip date-chip-picker" title="Change workout date">
-              <CalendarDays size={16} />
-              <span>{dateChipLabel}</span>
-              <input type="date" value={selectedDate} max={todayKey()} onChange={(event) => selectWorkoutDate(event.target.value)} aria-label="Workout date" />
-            </label>
+            <div className="date-chip date-chip-picker">
+              <button type="button" className="date-chip-trigger" onClick={() => setIsWorkoutDatePickerOpen((open) => !open)} aria-expanded={isWorkoutDatePickerOpen} aria-label="Change workout date" title="Change workout date">
+                <CalendarDays size={16} />
+                <span>{dateChipLabel}</span>
+              </button>
+              {isWorkoutDatePickerOpen ? (
+                <div className="date-popover">
+                  <input ref={workoutDateInputRef} type="date" value={selectedDate} max={todayKey()} onChange={(event) => selectWorkoutDate(event.target.value)} onKeyDown={(event) => {
+                    if (event.key === "Escape") setIsWorkoutDatePickerOpen(false);
+                  }} aria-label="Workout date" />
+                </div>
+              ) : null}
+            </div>
           ) : (
             <div className="date-chip">
               <CalendarDays size={16} />
