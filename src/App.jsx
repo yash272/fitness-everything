@@ -41,7 +41,8 @@ function Tracker() {
   const [range, setRange] = useState(30);
   const [workouts, setWorkouts] = useState([]);
   const [bodyLogs, setBodyLogs] = useState([]);
-  const [selectedDate, setSelectedDate] = useState(todayKey());
+  const [logDate, setLogDate] = useState(todayKey());
+  const [workoutDate, setWorkoutDate] = useState(todayKey());
   const [calendarMonth, setCalendarMonth] = useState(startOfMonth(new Date()));
   const [calendarMode, setCalendarMode] = useState(() => localStorage.getItem("fitness-calendar-mode") === "month" ? "month" : "week");
   const [loading, setLoading] = useState(true);
@@ -78,7 +79,7 @@ function Tracker() {
   }, [exportFile]);
 
   const todayWorkout = useMemo(() => workouts.find((workout) => workout.workout_date === todayKey()), [workouts]);
-  const selectedWorkout = useMemo(() => workouts.find((workout) => workout.workout_date === selectedDate), [workouts, selectedDate]);
+  const selectedWorkout = useMemo(() => workouts.find((workout) => workout.workout_date === workoutDate), [workouts, workoutDate]);
   const exerciseNames = useMemo(() => {
     const names = new Set(Object.values(DEFAULT_EXERCISES).flat());
     workouts.forEach((workout) => workout.exercises?.forEach((exercise) => names.add(exercise.name)));
@@ -181,9 +182,9 @@ function Tracker() {
     return next;
   }
 
-  function selectDate(date) {
+  function selectLogDate(date) {
     if (!date) return;
-    setSelectedDate(date);
+    setLogDate(date);
     setCalendarMonth(startOfMonth(new Date(`${date}T12:00:00`)));
   }
 
@@ -191,19 +192,19 @@ function Tracker() {
     if (!date) return;
     if (isFutureDateKey(date)) {
       setNotice(FUTURE_WORKOUT_NOTICE);
-      selectDate(todayKey());
+      setWorkoutDate(todayKey());
       setIsWorkoutDatePickerOpen(false);
       return;
     }
-    selectDate(date);
+    setWorkoutDate(date);
     setIsWorkoutDatePickerOpen(false);
   }
 
   function changeView(view) {
     setIsWorkoutDatePickerOpen(false);
-    if (view === "workout" && isFutureDateKey(selectedDate)) {
+    if (view === "workout" && isFutureDateKey(workoutDate)) {
       setNotice(FUTURE_WORKOUT_NOTICE);
-      selectDate(todayKey());
+      setWorkoutDate(todayKey());
     }
     setActiveView(view);
   }
@@ -239,8 +240,8 @@ function Tracker() {
     setNotice("");
     try {
       const workoutType = workoutTypeForEdit(selectedWorkout);
-      const workout = await ensureWorkoutForDate(selectedDate, workoutType, { did_workout: true });
-      const previous = bestBefore(name, trackingType, selectedDate);
+      const workout = await ensureWorkoutForDate(workoutDate, workoutType, { did_workout: true });
+      const previous = bestBefore(name, trackingType, workoutDate);
 
       const { data: exercise, error: exerciseError } = await supabase
         .from("exercises")
@@ -277,13 +278,13 @@ function Tracker() {
     const last = exercise.exercise_sets?.at(-1);
     if (!last) return;
     const trackingType = exercise.tracking_type || "weighted";
-    const workoutDate = workouts.find((workout) => workout.exercises?.some((item) => item.id === exercise.id))?.workout_date || selectedDate;
-    if (isFutureDateKey(workoutDate)) {
+    const exerciseWorkoutDate = workouts.find((workout) => workout.exercises?.some((item) => item.id === exercise.id))?.workout_date || workoutDate;
+    if (isFutureDateKey(exerciseWorkoutDate)) {
       setNotice(FUTURE_WORKOUT_NOTICE);
-      selectDate(todayKey());
+      setWorkoutDate(todayKey());
       return;
     }
-    const previous = bestBefore(exercise.name, trackingType, workoutDate);
+    const previous = bestBefore(exercise.name, trackingType, exerciseWorkoutDate);
     const repeated = {
       reps: last.reps,
       weight: last.weight,
@@ -310,10 +311,10 @@ function Tracker() {
   }
 
   async function deleteExercise(exerciseId) {
-    const workoutDate = workouts.find((workout) => workout.exercises?.some((exercise) => exercise.id === exerciseId))?.workout_date;
-    if (isFutureDateKey(workoutDate)) {
+    const exerciseWorkoutDate = workouts.find((workout) => workout.exercises?.some((exercise) => exercise.id === exerciseId))?.workout_date;
+    if (isFutureDateKey(exerciseWorkoutDate)) {
       setNotice(FUTURE_WORKOUT_NOTICE);
-      selectDate(todayKey());
+      setWorkoutDate(todayKey());
       return;
     }
 
@@ -359,7 +360,7 @@ function Tracker() {
 
   async function changeSplit(split) {
     try {
-      await ensureWorkoutForDate(selectedDate, split, { did_workout: true });
+      await ensureWorkoutForDate(workoutDate, split, { did_workout: true });
     } catch (error) {
       setNotice(error.message);
     }
@@ -422,7 +423,7 @@ function Tracker() {
     body: { eyebrow: "Body Progress", title: "Body Metrics" }
   };
   const activeCopy = viewCopy[activeView] || viewCopy.dashboard;
-  const dateChipDate = activeView === "workout" ? selectedDate : todayKey();
+  const dateChipDate = activeView === "workout" ? workoutDate : todayKey();
   const dateChipLabel = new Date(`${dateChipDate}T12:00:00`).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
 
   return (
@@ -476,7 +477,7 @@ function Tracker() {
               </button>
               {isWorkoutDatePickerOpen ? (
                 <div className="date-popover">
-                  <input ref={workoutDateInputRef} type="date" value={selectedDate} max={todayKey()} onChange={(event) => selectWorkoutDate(event.target.value)} onKeyDown={(event) => {
+                  <input ref={workoutDateInputRef} type="date" value={workoutDate} max={todayKey()} onChange={(event) => selectWorkoutDate(event.target.value)} onKeyDown={(event) => {
                     if (event.key === "Escape") setIsWorkoutDatePickerOpen(false);
                   }} aria-label="Workout date" />
                 </div>
@@ -523,8 +524,8 @@ function Tracker() {
           <DailyView
             workouts={workouts}
             bodyLogs={bodyLogs}
-            selectedDate={selectedDate}
-            setSelectedDate={selectDate}
+            selectedDate={logDate}
+            setSelectedDate={selectLogDate}
             calendarMonth={calendarMonth}
             setCalendarMonth={setCalendarMonth}
             calendarMode={calendarMode}
@@ -534,7 +535,7 @@ function Tracker() {
 
         {!loading && activeView === "workout" && (
           <WorkoutView
-            selectedDate={selectedDate}
+            selectedDate={workoutDate}
             selectedSplit={workoutTypeForEdit(selectedWorkout)}
             changeSplit={changeSplit}
             exerciseForm={exerciseForm}
