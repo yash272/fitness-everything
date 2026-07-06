@@ -36,8 +36,11 @@ function App() {
 
 function Tracker() {
   const userId = import.meta.env.VITE_PERSONAL_USER_ID;
-  const [activeView, setActiveView] = useState("dashboard");
-  const [theme, setTheme] = useState(() => localStorage.getItem("fitness-theme") || "dark");
+  const [activeView, setActiveView] = useState(() => {
+    const saved = localStorage.getItem("fitness-active-view");
+    return ["dashboard", "daily", "workout", "body"].includes(saved) ? saved : "dashboard";
+  });
+  const [theme, setTheme] = useState(() => localStorage.getItem("fitness-theme") || "light");
   const [range, setRange] = useState(30);
   const [workouts, setWorkouts] = useState([]);
   const [bodyLogs, setBodyLogs] = useState([]);
@@ -62,6 +65,10 @@ function Tracker() {
   useEffect(() => {
     localStorage.setItem("fitness-calendar-mode", calendarMode);
   }, [calendarMode]);
+
+  useEffect(() => {
+    localStorage.setItem("fitness-active-view", activeView);
+  }, [activeView]);
 
   useEffect(() => {
     const resetScroll = () => {
@@ -416,13 +423,13 @@ function Tracker() {
     { id: "workout", label: "Workout", icon: Dumbbell },
     { id: "body", label: "Progress", icon: Scale }
   ];
-  const viewCopy = {
-    dashboard: { eyebrow: "Performance Hub", title: "Dashboard" },
-    daily: { eyebrow: "Daily Log", title: "Training Logs" },
-    workout: { eyebrow: "Active Session", title: "Workout" },
-    body: { eyebrow: "Body Progress", title: "Body Metrics" }
+  const viewTitles = {
+    dashboard: "Dashboard",
+    daily: "Logs",
+    workout: "Workout",
+    body: "Progress"
   };
-  const activeCopy = viewCopy[activeView] || viewCopy.dashboard;
+  const activeTitle = viewTitles[activeView] || viewTitles.dashboard;
   const dateChipDate = activeView === "workout" ? workoutDate : todayKey();
   const dateChipLabel = new Date(`${dateChipDate}T12:00:00`).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
 
@@ -465,10 +472,7 @@ function Tracker() {
 
       <main className="app">
         <section className="hero-row">
-          <div>
-            <p className="eyebrow">{activeCopy.eyebrow}</p>
-            <h1>{activeCopy.title}</h1>
-          </div>
+          <h1>{activeTitle}</h1>
           {activeView === "workout" ? (
             <div className="date-chip date-chip-picker">
               <button type="button" className="date-chip-trigger" onClick={() => setIsWorkoutDatePickerOpen((open) => !open)} aria-expanded={isWorkoutDatePickerOpen} aria-label="Change workout date" title="Change workout date">
@@ -589,10 +593,7 @@ function Dashboard({ workoutSets, todayWorkout, todayPrs, latestBody, weekDays, 
 
       <section className="panel-section trend-panel">
         <div className="section-head">
-          <div>
-            <h2>Weight Trend</h2>
-            <p>Consistency is the key to progress</p>
-          </div>
+          <h2>Weight Trend</h2>
           <div className="segmented">
             {[30, 60, 90].map((days) => <button key={days} className={range === days ? "active" : ""} onClick={() => setRange(days)}>{days}D</button>)}
           </div>
@@ -615,13 +616,12 @@ function Dashboard({ workoutSets, todayWorkout, todayPrs, latestBody, weekDays, 
           <Stat label="Today" value={didWorkoutToday ? workoutTypeLabel(todayWorkout.split) : "Rest"} detail={didWorkoutToday ? `${workoutSets} sets - ${todayWorkout?.exercises?.length || 0} exercises - ${todayPrs} PR sets` : "No exercise sets logged today"} />
           <Stat label="This Week" value={`${weekDays} days`} detail="Workout days since Monday" />
           <Stat label="This Month" value={`${monthDays} days`} detail="Workout days this month" />
-          <Stat label="Steps Today" value={todaySteps ? todaySteps.toLocaleString() : "--"} detail="Logged on the Workout tab" />
+          <Stat label="Steps Today" value={todaySteps ? todaySteps.toLocaleString() : "--"} detail={todaySteps ? "Logged today" : "No steps yet"} />
         </section>
 
         <section className="panel-section pr-panel">
           <div className="section-head">
             <h2>Recent PRs</h2>
-            <button className="link-button">View All</button>
           </div>
           <div className="list">
             {recentPrs.length ? recentPrs.map((pr) => (
@@ -632,9 +632,8 @@ function Dashboard({ workoutSets, todayWorkout, todayPrs, latestBody, weekDays, 
                 </div>
                 <b>{formatSet(pr, pr.trackingType)}</b>
               </div>
-            )) : <Empty text="Beat a previous weight or rep mark and it will show here." />}
+            )) : <Empty text="No PRs yet." />}
           </div>
-          <button className="primary pr-action"><Plus size={18} />Log New PR</button>
         </section>
       </div>
     </>
@@ -732,7 +731,7 @@ function WeekGrid({ weekStart, workouts, bodyLogs, selectedDate, setSelectedDate
             <div>
               <b>{didWorkout ? workoutTypeLabel(log.split, "Gym") : "Rest"}</b>
               <small>{log?.steps ? formatCalendarSteps(log.steps) : "--"}</small>
-              <small>{bodyLog ? `${Number(bodyLog.weight).toFixed(1)} kg` : "--"}</small>
+              <small>{bodyLog ? Number(bodyLog.weight).toFixed(1) : "--"}</small>
             </div>
           </button>
         );
@@ -805,7 +804,7 @@ function CalendarGrid({ month, workouts, bodyLogs, selectedDate, setSelectedDate
             <strong>{day.getDate()}</strong>
             <span className="calendar-workout">{didWorkout ? log.split : isSaved ? "Rest" : ""}</span>
             <span className="calendar-metric">{hasSteps ? formatCalendarSteps(log.steps) : ""}</span>
-            <small>{bodyLog ? `${Number(bodyLog.weight).toFixed(1)} kg` : ""}</small>
+            <small>{bodyLog ? Number(bodyLog.weight).toFixed(1) : ""}</small>
             <span className="calendar-dots" aria-label={`${didWorkout ? "Workout logged" : "Rest day"}, ${hasSteps ? "steps logged" : "no steps"}, ${bodyLog ? "weight logged" : "no weight"}`}>
               <i className={didWorkout ? "active workout" : ""}></i>
               <i className={hasSteps ? "active steps" : ""}></i>
@@ -947,7 +946,7 @@ function WorkoutView({ selectedDate, selectedSplit, changeSplit, exerciseForm, s
           <div className="daily-control-head">
             <div>
               <h2>Add Exercise</h2>
-              <p>{selectedSplit ? `Add to ${workoutTypeLabel(selectedSplit)}` : "Choose an exercise and set style"}</p>
+              <p>{selectedSplit ? `Add to ${workoutTypeLabel(selectedSplit)}` : formatLongDate(selectedDate)}</p>
             </div>
             <button type="button" className="secondary mini" onClick={() => setIsAddingExercise(false)}>Close</button>
           </div>
@@ -1040,7 +1039,7 @@ function WorkoutView({ selectedDate, selectedSplit, changeSplit, exerciseForm, s
                 </div>
               </article>
             );
-          }) : <Empty text="Choose a type and add exercises for this date." />}
+          }) : <Empty text="No exercises logged for this day." />}
         </div>
       </section>
     </>
@@ -1076,7 +1075,7 @@ function BodyView({ bodyForm, setBodyForm, saveBody, bodyLogs, saving }) {
               </div>
               <b>{bodyTrend(entry, bodyLogs)}</b>
             </div>
-          )) : <Empty text="Log your first weigh-in to start the trend chart." />}
+          )) : <Empty text="No weigh-ins yet." />}
         </div>
       </section>
     </>
@@ -1094,7 +1093,7 @@ function WeightChart({ logs, range }) {
   if (points.length < 2) {
     return (
       <div className="chart empty-chart" role="img" aria-label="Weight trend chart">
-        <span>Log at least 2 weigh-ins</span>
+        <span>Not enough weigh-ins yet</span>
       </div>
     );
   }
