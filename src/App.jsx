@@ -51,6 +51,7 @@ function Tracker() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [isWorkoutDatePickerOpen, setIsWorkoutDatePickerOpen] = useState(false);
+  const [isAddingExercise, setIsAddingExercise] = useState(false);
   const [exerciseForm, setExerciseForm] = useState({ name: "", trackingType: "weighted", sets: [{ reps: "10", weight: "", duration: "" }] });
   const [bodyForm, setBodyForm] = useState({ weight: "", bodyFat: "" });
   const [notice, setNotice] = useState("");
@@ -544,6 +545,8 @@ function Tracker() {
             changeSplit={changeSplit}
             exerciseForm={exerciseForm}
             setExerciseForm={setExerciseForm}
+            isAddingExercise={isAddingExercise}
+            setIsAddingExercise={setIsAddingExercise}
             addExercise={addExercise}
             exerciseNames={exerciseNames}
             workoutTypes={workoutTypes}
@@ -817,10 +820,9 @@ function CalendarGrid({ month, workouts, bodyLogs, selectedDate, setSelectedDate
   );
 }
 
-function WorkoutView({ selectedDate, selectedSplit, changeSplit, exerciseForm, setExerciseForm, addExercise, exerciseNames, workoutTypes, selectedWorkout, saveDailyLog, bestBefore, repeatSet, deleteExercise, saving }) {
+function WorkoutView({ selectedDate, selectedSplit, changeSplit, exerciseForm, setExerciseForm, isAddingExercise, setIsAddingExercise, addExercise, exerciseNames, workoutTypes, selectedWorkout, saveDailyLog, bestBefore, repeatSet, deleteExercise, saving }) {
   const [isEditingType, setIsEditingType] = useState(false);
   const [isEditingSteps, setIsEditingSteps] = useState(false);
-  const [isAddingExercise, setIsAddingExercise] = useState(false);
   const [typeDraft, setTypeDraft] = useState(selectedSplit);
   const [stepsDraft, setStepsDraft] = useState(selectedWorkout?.steps ?? "");
   const workoutTypeTitle = selectedSplit ? workoutTypeLabel(selectedSplit) : "Workout Type";
@@ -829,10 +831,6 @@ function WorkoutView({ selectedDate, selectedSplit, changeSplit, exerciseForm, s
     setIsEditingType(false);
     setTypeDraft(selectedSplit);
   }, [selectedSplit]);
-
-  useEffect(() => {
-    setIsAddingExercise(false);
-  }, [selectedDate]);
 
   useEffect(() => {
     setIsEditingSteps(false);
