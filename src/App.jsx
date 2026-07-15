@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Activity, BarChart3, Bolt, CalendarDays, CalendarRange, ChevronLeft, ChevronRight, Download, Dumbbell, Moon, Plus, RefreshCw, Scale, Sun, Trash2 } from "lucide-react";
+import { buildFitnessExport, exportFilename } from "./exportData";
 import { isSupabaseConfigured, supabase } from "./supabaseClient";
 
 const DEFAULT_WORKOUT_TYPES = ["Push", "Pull", "Legs", "Cardio", "Sports", "Mobility"];
@@ -56,6 +57,8 @@ function Tracker() {
   const [bodyForm, setBodyForm] = useState({ weight: "", bodyFat: "" });
   const [notice, setNotice] = useState("");
   const [exportFile, setExportFile] = useState(null);
+  const [isExportOptionsOpen, setIsExportOptionsOpen] = useState(false);
+  const [exportMonth, setExportMonth] = useState(() => dateKey(startOfMonth(new Date())).slice(0, 7));
   const workoutDateInputRef = useRef(null);
 
   useEffect(() => {
@@ -391,16 +394,10 @@ function Tracker() {
     }
   }
 
-  function exportMonthData() {
-    const payload = buildMonthExport({
-      month: calendarMonth,
-      workouts,
-      bodyLogs,
-      userId
-    });
+  function downloadExport(payload) {
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
-    const filename = `fitness-everything-${payload.period.month}.json`;
+    const filename = exportFilename(payload);
     if (exportFile?.url) URL.revokeObjectURL(exportFile.url);
     setExportFile({ url, filename, label: payload.period.label });
     const link = document.createElement("a");
@@ -410,6 +407,29 @@ function Tracker() {
     link.click();
     window.setTimeout(() => link.remove(), 0);
     setNotice(`Export ready for ${payload.period.label}. If it did not download automatically, use the download link below.`);
+    setIsExportOptionsOpen(false);
+  }
+
+  function exportSelectedMonth() {
+    const [year, month] = exportMonth.split("-").map(Number);
+    const payload = buildFitnessExport({
+      mode: "month",
+      month: new Date(year, month - 1, 1),
+      workouts,
+      bodyLogs,
+      userId
+    });
+    downloadExport(payload);
+  }
+
+  function exportAllTimeData() {
+    const payload = buildFitnessExport({
+      mode: "all-time",
+      workouts,
+      bodyLogs,
+      userId
+    });
+    downloadExport(payload);
   }
 
   const workoutSets = todayWorkout?.exercises?.reduce((sum, exercise) => sum + exercise.exercise_sets.length, 0) || 0;
@@ -456,10 +476,26 @@ function Tracker() {
           })}
         </nav>
         <div className="top-actions">
-          <button className="icon-button export-button" onClick={exportMonthData} aria-label="Export current month JSON" title="Export current month JSON">
-            <Download size={18} />
-            <span>Export</span>
-          </button>
+          <div className="export-control">
+            <button className="icon-button export-button" onClick={() => setIsExportOptionsOpen((open) => !open)} aria-expanded={isExportOptionsOpen} aria-label="Choose data export range" title="Choose data export range">
+              <Download size={18} />
+              <span>Export</span>
+            </button>
+            {isExportOptionsOpen ? (
+              <div className="export-popover" role="dialog" aria-label="Export options">
+                <label>
+                  <span>Month</span>
+                  <input type="month" value={exportMonth} onChange={(event) => setExportMonth(event.target.value)} />
+                </label>
+                <button type="button" onClick={exportSelectedMonth} disabled={!exportMonth}>
+                  Export month
+                </button>
+                <button type="button" className="secondary" onClick={exportAllTimeData}>
+                  Export all time
+                </button>
+              </div>
+            ) : null}
+          </div>
           <button
             className="icon-button"
             onClick={() => setTheme((current) => current === "dark" ? "light" : "dark")}
@@ -1280,58 +1316,6 @@ function formatCalendarSteps(steps) {
   const count = Number(steps || 0);
   if (count >= 1000) return `${(count / 1000).toFixed(1)}k`;
   return count.toLocaleString();
-}
-
-function buildMonthExport({ month, workouts, bodyLogs, userId }) {
-  const start = startOfMonth(month);
-  const end = new Date(start.getFullYear(), start.getMonth() + 1, 0);
-  const monthKey = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, "0")}`;
-  const workoutsByDate = new Map(workouts.map((workout) => [workout.workout_date, workout]));
-  const bodyLogsByDate = new Map(bodyLogs.map((entry) => [entry.log_date, entry]));
-  const days = Array.from({ length: end.getDate() }, (_item, index) => {
-    const day = addDays(start, index);
-    const key = dateKey(day);
-    const workout = workoutsByDate.get(key);
-    const bodyLog = bodyLogsByDate.get(key);
-    return {
-      date: key,
-      steps: workout?.steps ?? null,
-      weight_kg: bodyLog ? Number(bodyLog.weight) : null,
-      body_fat_percent: bodyLog?.body_fat == null ? null : Number(bodyLog.body_fat),
-      gym: hasWorkoutActivity(workout),
-      workout_type: workoutTypeForEdit(workout) || null,
-      workouts: (workout?.exercises || []).map((exercise) => ({
-        name: exercise.name,
-        tracking_type: exercise.tracking_type || "weighted",
-        sets: (exercise.exercise_sets || []).map((set) => ({
-          reps: set.reps,
-          weight_lbs: set.weight == null ? null : Number(set.weight),
-          duration_minutes: set.duration_minutes == null ? null : Number(set.duration_minutes),
-          is_pr: Boolean(set.is_pr),
-          logged_at: set.logged_at
-        }))
-      }))
-    };
-  });
-
-  return {
-    exported_at: new Date().toISOString(),
-    app: "fitness everything",
-    user_id: userId,
-    period: {
-      type: "month",
-      month: monthKey,
-      start_date: dateKey(start),
-      end_date: dateKey(end),
-      label: start.toLocaleDateString(undefined, { month: "long", year: "numeric" })
-    },
-    units: {
-      body_weight: "kg",
-      set_weight: "lbs",
-      time: "minutes"
-    },
-    days
-  };
 }
 
 function startOfMonth(date) {
