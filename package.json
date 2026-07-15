@@ -10,7 +10,8 @@
     "lint": "eslint .",
     "db:login": "npx supabase login",
     "db:link": "npx supabase link",
-    "db:push": "npx supabase db push"
+    "db:push": "npx supabase db push",
+    "test": "node src/exportData.test.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",
