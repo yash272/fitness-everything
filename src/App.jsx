@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Activity, BarChart3, Bolt, CalendarDays, CalendarRange, ChevronLeft, ChevronRight, Download, Dumbbell, Moon, Plus, RefreshCw, Scale, Sun, Trash2 } from "lucide-react";
 import { buildFitnessExport, exportFilename } from "./exportData";
+import { buildSuggestedPlanForSplit } from "./workoutPlan";
 import { isSupabaseConfigured, supabase } from "./supabaseClient";
 
 const DEFAULT_WORKOUT_TYPES = ["Push", "Pull", "Legs", "Cardio", "Sports", "Mobility"];
 const DEFAULT_EXERCISES = {
-  Push: ["Bench Press", "Incline Dumbbell Press", "Shoulder Press", "Lateral Raise", "Triceps Pushdown"],
-  Pull: ["Deadlift", "Pull Up", "Lat Pulldown", "Barbell Row", "Bicep Curl"],
-  Legs: ["Squat", "Leg Press", "Romanian Deadlift", "Leg Curl", "Calf Raise"],
+  Push: ["Flat Dumbbell Bench Press", "Incline Dumbbell Press", "Dumbbell Shoulder Press", "Lateral Raise", "Triceps Rope Pushdown"],
+  Pull: ["Lat Pulldown", "Low Row", "Machine Rear Delt", "Bicep Curl", "Hammer Curl"],
+  Legs: ["Leg Extension", "Goblet Squats", "Leg Curls", "Romanian Deadlift", "Calf Raise"],
   Cardio: ["Treadmill", "Bike", "Rowing", "Stair Climber", "Elliptical"],
   Sports: ["Badminton", "Basketball", "Soccer", "Tennis"],
   Mobility: ["Stretching", "Yoga", "Warmup"]
@@ -278,6 +279,56 @@ function Tracker() {
       const nextExercise = { ...exercise, exercise_sets: sets };
       setWorkouts((items) => upsertExercise(items, workout.id, nextExercise));
       setExerciseForm({ name: "", trackingType, sets: [defaultSetForMode(trackingType)] });
+    } catch (error) {
+      setNotice(error.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function acceptSuggestedPlan(planExercises) {
+    const suggestions = planExercises
+      .map((exercise) => ({
+        ...exercise,
+        name: exercise.name.trim(),
+        trackingType: exercise.trackingType || "weighted",
+        sets: exercise.sets.map((set) => normalizeSetInput(set, exercise.trackingType || "weighted")).filter(Boolean)
+      }))
+      .filter((exercise) => exercise.name && exercise.sets.length);
+    if (!suggestions.length) return;
+
+    setSaving(true);
+    setNotice("");
+    try {
+      const workoutType = workoutTypeForEdit(selectedWorkout) || workoutTypeForEdit({ split: suggestions[0]?.split }) || "";
+      const workout = await ensureWorkoutForDate(workoutDate, workoutType || undefined, { did_workout: true });
+
+      for (const suggestion of suggestions) {
+        const previous = bestBefore(suggestion.name, suggestion.trackingType, workoutDate);
+        const { data: exercise, error: exerciseError } = await supabase
+          .from("exercises")
+          .insert({ workout_id: workout.id, user_id: userId, name: suggestion.name, tracking_type: suggestion.trackingType })
+          .select("id,user_id,name,tracking_type,created_at")
+          .single();
+        if (exerciseError) throw exerciseError;
+
+        const setRows = suggestion.sets.map((set) => ({
+          exercise_id: exercise.id,
+          user_id: userId,
+          reps: set.reps,
+          weight: set.weight,
+          duration_minutes: set.duration_minutes,
+          is_pr: Boolean(previous) && isBetterSet(set, previous, suggestion.trackingType)
+        }));
+        const { data: sets, error: setError } = await supabase
+          .from("exercise_sets")
+          .insert(setRows)
+          .select("id,user_id,reps,weight,duration_minutes,is_pr,logged_at");
+        if (setError) throw setError;
+
+        setWorkouts((items) => upsertExercise(items, workout.id, { ...exercise, exercise_sets: sets }));
+      }
+      setNotice("Suggested workout accepted. You can still edit by deleting or adding exercises/sets.");
     } catch (error) {
       setNotice(error.message);
     } finally {
@@ -591,6 +642,7 @@ function Tracker() {
             bestBefore={bestBefore}
             repeatSet={repeatSet}
             deleteExercise={deleteExercise}
+            acceptSuggestedPlan={acceptSuggestedPlan}
             saving={saving}
           />
         )}
@@ -856,12 +908,14 @@ function CalendarGrid({ month, workouts, bodyLogs, selectedDate, setSelectedDate
   );
 }
 
-function WorkoutView({ selectedDate, selectedSplit, changeSplit, exerciseForm, setExerciseForm, isAddingExercise, setIsAddingExercise, addExercise, exerciseNames, workoutTypes, selectedWorkout, saveDailyLog, bestBefore, repeatSet, deleteExercise, saving }) {
+function WorkoutView({ selectedDate, selectedSplit, changeSplit, exerciseForm, setExerciseForm, isAddingExercise, setIsAddingExercise, addExercise, exerciseNames, workoutTypes, selectedWorkout, saveDailyLog, bestBefore, repeatSet, deleteExercise, acceptSuggestedPlan, saving }) {
   const [isEditingType, setIsEditingType] = useState(false);
   const [isEditingSteps, setIsEditingSteps] = useState(false);
   const [typeDraft, setTypeDraft] = useState(selectedSplit);
   const [stepsDraft, setStepsDraft] = useState(selectedWorkout?.steps ?? "");
+  const [planDraft, setPlanDraft] = useState(() => buildSuggestedPlanForSplit(selectedSplit));
   const workoutTypeTitle = selectedSplit ? workoutTypeLabel(selectedSplit) : "Workout Type";
+  const existingExerciseNames = useMemo(() => new Set((selectedWorkout?.exercises || []).map((exercise) => exercise.name.toLowerCase())), [selectedWorkout?.exercises]);
 
   useEffect(() => {
     setIsEditingType(false);
@@ -872,6 +926,10 @@ function WorkoutView({ selectedDate, selectedSplit, changeSplit, exerciseForm, s
     setIsEditingSteps(false);
     setStepsDraft(selectedWorkout?.steps ?? "");
   }, [selectedDate, selectedWorkout?.steps]);
+
+  useEffect(() => {
+    setPlanDraft(buildSuggestedPlanForSplit(selectedSplit));
+  }, [selectedSplit, selectedDate]);
 
   async function saveWorkoutType(event) {
     event.preventDefault();
@@ -909,6 +967,34 @@ function WorkoutView({ selectedDate, selectedSplit, changeSplit, exerciseForm, s
     });
   }
 
+  function updatePlanExercise(index, patch) {
+    setPlanDraft((plan) => ({
+      ...plan,
+      exercises: plan.exercises.map((exercise, exerciseIndex) => exerciseIndex === index ? { ...exercise, ...patch } : exercise)
+    }));
+  }
+
+  function updatePlanSet(exerciseIndex, setIndex, field, value) {
+    setPlanDraft((plan) => ({
+      ...plan,
+      exercises: plan.exercises.map((exercise, index) => index === exerciseIndex ? {
+        ...exercise,
+        sets: exercise.sets.map((set, rowIndex) => rowIndex === setIndex ? { ...set, [field]: value } : set)
+      } : exercise)
+    }));
+  }
+
+  function removePlanExercise(index) {
+    setPlanDraft((plan) => ({ ...plan, exercises: plan.exercises.filter((_exercise, exerciseIndex) => exerciseIndex !== index) }));
+  }
+
+  function addPlanExercise() {
+    setPlanDraft((plan) => ({
+      ...plan,
+      exercises: [...plan.exercises, { name: "", trackingType: "weighted", note: "", sets: [{ reps: "10", weight: "", duration: "" }] }]
+    }));
+  }
+
   return (
     <>
       <section className="panel-section form">
@@ -921,6 +1007,14 @@ function WorkoutView({ selectedDate, selectedSplit, changeSplit, exerciseForm, s
             <button type="button" className="secondary mini" onClick={() => setIsEditingType(true)}>Edit</button>
           ) : null}
         </div>
+        <div className="quick-split-buttons" aria-label="Quick workout templates">
+          {["Push", "Pull", "Legs"].map((type) => (
+            <button key={type} type="button" className={selectedSplit?.toLowerCase() === type.toLowerCase() ? "active" : ""} onClick={() => changeSplit(type)}>
+              {type}
+            </button>
+          ))}
+        </div>
+
         {isEditingType ? (
           <form className="form" onSubmit={saveWorkoutType}>
             <label>
@@ -974,6 +1068,20 @@ function WorkoutView({ selectedDate, selectedSplit, changeSplit, exerciseForm, s
           ) : null}
         </div>
       </section>
+
+      {planDraft ? (
+        <SuggestedWorkoutPlan
+          plan={planDraft}
+          existingExerciseNames={existingExerciseNames}
+          exerciseNames={exerciseNames}
+          updateExercise={updatePlanExercise}
+          updateSet={updatePlanSet}
+          removeExercise={removePlanExercise}
+          addExercise={addPlanExercise}
+          acceptPlan={() => acceptSuggestedPlan(planDraft.exercises)}
+          saving={saving}
+        />
+      ) : null}
 
       {isAddingExercise ? (
         <form className="panel-section form" onSubmit={addExercise}>
@@ -1077,6 +1185,67 @@ function WorkoutView({ selectedDate, selectedSplit, changeSplit, exerciseForm, s
         </div>
       </section>
     </>
+  );
+}
+
+function SuggestedWorkoutPlan({ plan, existingExerciseNames, exerciseNames, updateExercise, updateSet, removeExercise, addExercise, acceptPlan, saving }) {
+  const acceptDisabled = saving || !plan.exercises.some((exercise) => exercise.name.trim() && exercise.sets.some((set) => set.reps && set.weight !== ""));
+
+  return (
+    <section className="panel-section suggested-plan">
+      <div className="daily-control-head suggested-plan-head">
+        <div>
+          <h2>{plan.title}</h2>
+          <p>{plan.description}</p>
+        </div>
+        <span className="badge">Editable</span>
+      </div>
+      <datalist id="suggested-exercise-options">
+        {exerciseNames.map((name) => <option key={name} value={name} />)}
+      </datalist>
+      <div className="suggested-plan-list">
+        {plan.exercises.map((exercise, exerciseIndex) => {
+          const alreadyLogged = existingExerciseNames.has(exercise.name.toLowerCase());
+          return (
+            <article className={`suggested-exercise ${alreadyLogged ? "already-logged" : ""}`} key={`${exercise.name || "new"}-${exerciseIndex}`}>
+              <div className="suggested-exercise-head">
+                <label>
+                  Exercise
+                  <input value={exercise.name} list="suggested-exercise-options" placeholder="Exercise name" onChange={(event) => updateExercise(exerciseIndex, { name: event.target.value })} />
+                </label>
+                <button type="button" className="danger icon-only" onClick={() => removeExercise(exerciseIndex)} disabled={plan.exercises.length === 1} aria-label={`Remove ${exercise.name || "exercise"}`} title={`Remove ${exercise.name || "exercise"}`}>
+                  <Trash2 size={16} />
+                </button>
+              </div>
+              <div className="target-set-grid">
+                {exercise.sets.map((set, setIndex) => (
+                  <div className="target-set-row" key={setIndex}>
+                    <span>{setIndex + 1}</span>
+                    <label>
+                      Reps
+                      <input type="number" min="1" inputMode="numeric" value={set.reps} onChange={(event) => updateSet(exerciseIndex, setIndex, "reps", event.target.value)} />
+                    </label>
+                    <label>
+                      Lbs
+                      <input type="number" min="0" step="2.5" inputMode="decimal" value={set.weight} onChange={(event) => updateSet(exerciseIndex, setIndex, "weight", event.target.value)} />
+                    </label>
+                  </div>
+                ))}
+              </div>
+              {exercise.note || alreadyLogged ? (
+                <p className="suggested-note">
+                  {alreadyLogged ? "Already logged today. Accepting will add another copy unless you remove this suggestion. " : ""}{exercise.note}
+                </p>
+              ) : null}
+            </article>
+          );
+        })}
+      </div>
+      <div className="form-actions suggested-plan-actions">
+        <button type="button" className="secondary" onClick={addExercise}><Plus size={17} />Add Exercise</button>
+        <button type="button" className="primary" onClick={acceptPlan} disabled={acceptDisabled}><Dumbbell size={18} />Accept Plan</button>
+      </div>
+    </section>
   );
 }
 
