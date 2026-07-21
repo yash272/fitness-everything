@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { buildSuggestedPlanForSplit, shouldShowSuggestedPlan, WORKOUT_PLAN_TEMPLATES } from "./workoutPlan.js";
+import { buildSuggestedPlanForSplit, shouldShowSuggestedPlan, suggestedPlanDraftStorageKey, suggestedPlanRejectedStorageKey, WORKOUT_PLAN_TEMPLATES } from "./workoutPlan.js";
 
 const pushPlan = buildSuggestedPlanForSplit("Push");
 assert.equal(pushPlan.title, "Suggested Push Day");
@@ -50,3 +50,8 @@ assert.equal(shouldShowSuggestedPlan({ plan: pushPlan, selectedWorkout: { exerci
 assert.equal(shouldShowSuggestedPlan({ plan: pushPlan, selectedWorkout: { exercises: [] }, rejectedSplits: new Set(["Push"]) }), false);
 assert.equal(shouldShowSuggestedPlan({ plan: { ...pushPlan, exercises: [] }, selectedWorkout: { exercises: [] }, rejectedSplits: new Set() }), false);
 assert.equal(shouldShowSuggestedPlan({ plan: null, selectedWorkout: { exercises: [] }, rejectedSplits: new Set() }), false);
+
+
+assert.equal(suggestedPlanDraftStorageKey("2026-07-21", "push"), "fitness-suggested-plan-draft:2026-07-21:Push");
+assert.equal(suggestedPlanDraftStorageKey("2026-07-21", "Sports"), "fitness-suggested-plan-draft:2026-07-21:none");
+assert.equal(suggestedPlanRejectedStorageKey("2026-07-21"), "fitness-suggested-plan-rejected:2026-07-21");

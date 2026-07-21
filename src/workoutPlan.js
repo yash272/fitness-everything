@@ -47,6 +47,14 @@ export function shouldShowSuggestedPlan({ plan, rejectedSplits }) {
   return true;
 }
 
+export function suggestedPlanDraftStorageKey(date, split) {
+  return `fitness-suggested-plan-draft:${date}:${canonicalSplit(split) || "none"}`;
+}
+
+export function suggestedPlanRejectedStorageKey(date) {
+  return `fitness-suggested-plan-rejected:${date}`;
+}
+
 function canonicalSplitFromTitle(title) {
   const normalized = String(title || "").toLowerCase();
   if (normalized.includes("push")) return "Push";
