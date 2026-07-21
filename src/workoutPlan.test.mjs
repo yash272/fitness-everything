@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { buildSuggestedPlanForSplit, WORKOUT_PLAN_TEMPLATES } from "./workoutPlan.js";
+import { buildSuggestedPlanForSplit, shouldShowSuggestedPlan, WORKOUT_PLAN_TEMPLATES } from "./workoutPlan.js";
 
 const pushPlan = buildSuggestedPlanForSplit("Push");
 assert.equal(pushPlan.title, "Suggested Push Day");
@@ -43,3 +43,9 @@ assert.equal(unknownPlan, null);
 const mutated = buildSuggestedPlanForSplit("Push");
 mutated.exercises[0].name = "Changed";
 assert.equal(WORKOUT_PLAN_TEMPLATES.Push.exercises[0].name, "Flat Dumbbell Bench Press");
+
+
+assert.equal(shouldShowSuggestedPlan({ plan: pushPlan, selectedWorkout: { exercises: [] }, rejectedSplits: new Set() }), true);
+assert.equal(shouldShowSuggestedPlan({ plan: pushPlan, selectedWorkout: { exercises: [{ name: "Flat Dumbbell Bench Press" }] }, rejectedSplits: new Set() }), false);
+assert.equal(shouldShowSuggestedPlan({ plan: pushPlan, selectedWorkout: { exercises: [] }, rejectedSplits: new Set(["Push"]) }), false);
+assert.equal(shouldShowSuggestedPlan({ plan: null, selectedWorkout: { exercises: [] }, rejectedSplits: new Set() }), false);

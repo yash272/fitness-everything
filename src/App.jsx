@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Activity, BarChart3, Bolt, CalendarDays, CalendarRange, ChevronLeft, ChevronRight, Download, Dumbbell, Moon, Plus, RefreshCw, Scale, Sun, Trash2 } from "lucide-react";
 import { buildFitnessExport, exportFilename } from "./exportData";
-import { buildSuggestedPlanForSplit } from "./workoutPlan";
+import { buildSuggestedPlanForSplit, canonicalSplit, shouldShowSuggestedPlan } from "./workoutPlan";
 import { isSupabaseConfigured, supabase } from "./supabaseClient";
 
 const DEFAULT_WORKOUT_TYPES = ["Push", "Pull", "Legs", "Cardio", "Sports", "Mobility"];
@@ -329,8 +329,10 @@ function Tracker() {
         setWorkouts((items) => upsertExercise(items, workout.id, { ...exercise, exercise_sets: sets }));
       }
       setNotice("Suggested workout accepted. You can still edit by deleting or adding exercises/sets.");
+      return true;
     } catch (error) {
       setNotice(error.message);
+      return false;
     } finally {
       setSaving(false);
     }
@@ -914,8 +916,10 @@ function WorkoutView({ selectedDate, selectedSplit, changeSplit, exerciseForm, s
   const [typeDraft, setTypeDraft] = useState(selectedSplit);
   const [stepsDraft, setStepsDraft] = useState(selectedWorkout?.steps ?? "");
   const [planDraft, setPlanDraft] = useState(() => buildSuggestedPlanForSplit(selectedSplit));
+  const [rejectedSplits, setRejectedSplits] = useState(() => new Set());
   const workoutTypeTitle = selectedSplit ? workoutTypeLabel(selectedSplit) : "Workout Type";
   const existingExerciseNames = useMemo(() => new Set((selectedWorkout?.exercises || []).map((exercise) => exercise.name.toLowerCase())), [selectedWorkout?.exercises]);
+  const showSuggestedPlan = shouldShowSuggestedPlan({ plan: planDraft, selectedWorkout, rejectedSplits });
 
   useEffect(() => {
     setIsEditingType(false);
@@ -930,6 +934,10 @@ function WorkoutView({ selectedDate, selectedSplit, changeSplit, exerciseForm, s
   useEffect(() => {
     setPlanDraft(buildSuggestedPlanForSplit(selectedSplit));
   }, [selectedSplit, selectedDate]);
+
+  useEffect(() => {
+    setRejectedSplits(new Set());
+  }, [selectedDate]);
 
   async function saveWorkoutType(event) {
     event.preventDefault();
@@ -968,31 +976,42 @@ function WorkoutView({ selectedDate, selectedSplit, changeSplit, exerciseForm, s
   }
 
   function updatePlanExercise(index, patch) {
-    setPlanDraft((plan) => ({
+    setPlanDraft((plan) => plan ? ({
       ...plan,
       exercises: plan.exercises.map((exercise, exerciseIndex) => exerciseIndex === index ? { ...exercise, ...patch } : exercise)
-    }));
+    }) : plan);
   }
 
   function updatePlanSet(exerciseIndex, setIndex, field, value) {
-    setPlanDraft((plan) => ({
+    setPlanDraft((plan) => plan ? ({
       ...plan,
       exercises: plan.exercises.map((exercise, index) => index === exerciseIndex ? {
         ...exercise,
         sets: exercise.sets.map((set, rowIndex) => rowIndex === setIndex ? { ...set, [field]: value } : set)
       } : exercise)
-    }));
+    }) : plan);
   }
 
   function removePlanExercise(index) {
-    setPlanDraft((plan) => ({ ...plan, exercises: plan.exercises.filter((_exercise, exerciseIndex) => exerciseIndex !== index) }));
+    setPlanDraft((plan) => plan ? ({ ...plan, exercises: plan.exercises.filter((_exercise, exerciseIndex) => exerciseIndex !== index) }) : plan);
   }
 
   function addPlanExercise() {
-    setPlanDraft((plan) => ({
+    setPlanDraft((plan) => plan ? ({
       ...plan,
       exercises: [...plan.exercises, { name: "", trackingType: "weighted", note: "", sets: [{ reps: "10", weight: "", duration: "" }] }]
-    }));
+    }) : plan);
+  }
+
+  function rejectPlan() {
+    const split = canonicalSplit(selectedSplit);
+    if (split) setRejectedSplits((current) => new Set([...current, split]));
+    setPlanDraft(null);
+  }
+
+  async function acceptPlan() {
+    const accepted = await acceptSuggestedPlan(planDraft.exercises);
+    if (accepted) setPlanDraft(null);
   }
 
   return (
@@ -1069,7 +1088,7 @@ function WorkoutView({ selectedDate, selectedSplit, changeSplit, exerciseForm, s
         </div>
       </section>
 
-      {planDraft ? (
+      {showSuggestedPlan ? (
         <SuggestedWorkoutPlan
           plan={planDraft}
           existingExerciseNames={existingExerciseNames}
@@ -1078,7 +1097,8 @@ function WorkoutView({ selectedDate, selectedSplit, changeSplit, exerciseForm, s
           updateSet={updatePlanSet}
           removeExercise={removePlanExercise}
           addExercise={addPlanExercise}
-          acceptPlan={() => acceptSuggestedPlan(planDraft.exercises)}
+          acceptPlan={acceptPlan}
+          rejectPlan={rejectPlan}
           saving={saving}
         />
       ) : null}
@@ -1188,7 +1208,7 @@ function WorkoutView({ selectedDate, selectedSplit, changeSplit, exerciseForm, s
   );
 }
 
-function SuggestedWorkoutPlan({ plan, existingExerciseNames, exerciseNames, updateExercise, updateSet, removeExercise, addExercise, acceptPlan, saving }) {
+function SuggestedWorkoutPlan({ plan, existingExerciseNames, exerciseNames, updateExercise, updateSet, removeExercise, addExercise, acceptPlan, rejectPlan, saving }) {
   const acceptDisabled = saving || !plan.exercises.some((exercise) => exercise.name.trim() && exercise.sets.some((set) => set.reps && set.weight !== ""));
 
   return (
@@ -1241,8 +1261,9 @@ function SuggestedWorkoutPlan({ plan, existingExerciseNames, exerciseNames, upda
           );
         })}
       </div>
-      <div className="form-actions suggested-plan-actions">
+      <div className="suggested-plan-actions">
         <button type="button" className="secondary" onClick={addExercise}><Plus size={17} />Add Exercise</button>
+        <button type="button" className="secondary" onClick={rejectPlan} disabled={saving}>Reject Plan</button>
         <button type="button" className="primary" onClick={acceptPlan} disabled={acceptDisabled}><Dumbbell size={18} />Accept Plan</button>
       </div>
     </section>
