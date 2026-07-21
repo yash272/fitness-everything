@@ -885,7 +885,7 @@ select:focus {
 
 .set-row {
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: auto 1fr auto auto;
   gap: 10px;
   align-items: center;
   min-height: 32px;
@@ -921,6 +921,12 @@ select:focus {
   font-style: normal;
   font-weight: 650;
   letter-spacing: 0.04em;
+}
+
+.set-delete-button {
+  width: 30px;
+  min-height: 30px;
+  border-radius: 5px;
 }
 
 .card-actions {

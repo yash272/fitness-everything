@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Activity, BarChart3, Bolt, CalendarDays, CalendarRange, ChevronLeft, ChevronRight, Download, Dumbbell, Moon, Plus, RefreshCw, Scale, Sun, Trash2 } from "lucide-react";
 import { buildFitnessExport, exportFilename } from "./exportData";
 import { buildSuggestedPlanForSplit, canonicalSplit, shouldShowSuggestedPlan } from "./workoutPlan";
+import { removeSetFromWorkouts } from "./workoutMutations";
 import { isSupabaseConfigured, supabase } from "./supabaseClient";
 
 const DEFAULT_WORKOUT_TYPES = ["Push", "Pull", "Legs", "Cardio", "Sports", "Mobility"];
@@ -374,6 +375,21 @@ function Tracker() {
     setSaving(false);
   }
 
+  async function deleteSet(setId) {
+    const setWorkoutDate = workouts.find((workout) => workout.exercises?.some((exercise) => exercise.exercise_sets?.some((set) => set.id === setId)))?.workout_date;
+    if (isFutureDateKey(setWorkoutDate)) {
+      setNotice(FUTURE_WORKOUT_NOTICE);
+      setWorkoutDate(todayKey());
+      return;
+    }
+
+    setSaving(true);
+    const { error } = await supabase.from("exercise_sets").delete().eq("id", setId);
+    if (error) setNotice(error.message);
+    else setWorkouts((items) => removeSetFromWorkouts(items, setId));
+    setSaving(false);
+  }
+
   async function deleteExercise(exerciseId) {
     const exerciseWorkoutDate = workouts.find((workout) => workout.exercises?.some((exercise) => exercise.id === exerciseId))?.workout_date;
     if (isFutureDateKey(exerciseWorkoutDate)) {
@@ -643,6 +659,7 @@ function Tracker() {
             saveDailyLog={saveDailyLog}
             bestBefore={bestBefore}
             repeatSet={repeatSet}
+            deleteSet={deleteSet}
             deleteExercise={deleteExercise}
             acceptSuggestedPlan={acceptSuggestedPlan}
             saving={saving}
@@ -910,7 +927,7 @@ function CalendarGrid({ month, workouts, bodyLogs, selectedDate, setSelectedDate
   );
 }
 
-function WorkoutView({ selectedDate, selectedSplit, changeSplit, exerciseForm, setExerciseForm, isAddingExercise, setIsAddingExercise, addExercise, exerciseNames, workoutTypes, selectedWorkout, saveDailyLog, bestBefore, repeatSet, deleteExercise, acceptSuggestedPlan, saving }) {
+function WorkoutView({ selectedDate, selectedSplit, changeSplit, exerciseForm, setExerciseForm, isAddingExercise, setIsAddingExercise, addExercise, exerciseNames, workoutTypes, selectedWorkout, saveDailyLog, bestBefore, repeatSet, deleteSet, deleteExercise, acceptSuggestedPlan, saving }) {
   const [isEditingType, setIsEditingType] = useState(false);
   const [isEditingSteps, setIsEditingSteps] = useState(false);
   const [typeDraft, setTypeDraft] = useState(selectedSplit);
@@ -1192,6 +1209,9 @@ function WorkoutView({ selectedDate, selectedSplit, changeSplit, exerciseForm, s
                       <span>{index + 1}</span>
                       <b>{formatSet(set, trackingType)}</b>
                       <em>{set.is_pr ? "NEW PR" : ""}</em>
+                      <button type="button" className="danger icon-only set-delete-button" onClick={() => deleteSet(set.id)} disabled={saving} aria-label={`Delete set ${index + 1} from ${exercise.name}`} title={`Delete set ${index + 1}`}>
+                        <Trash2 size={14} />
+                      </button>
                     </div>
                   ))}
                 </div>
