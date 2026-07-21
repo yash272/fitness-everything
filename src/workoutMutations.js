@@ -7,3 +7,18 @@ export function removeSetFromWorkouts(workouts, setId) {
     }))
   }));
 }
+
+export function removeSetFromPlan(plan, exerciseIndex, setIndex) {
+  if (!plan) return plan;
+  return {
+    ...plan,
+    exercises: (plan.exercises || []).map((exercise, index) => {
+      if (index !== exerciseIndex) return exercise;
+      if ((exercise.sets || []).length <= 1) return exercise;
+      return {
+        ...exercise,
+        sets: exercise.sets.filter((_set, rowIndex) => rowIndex !== setIndex)
+      };
+    })
+  };
+}

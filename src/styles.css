@@ -1066,7 +1066,7 @@ select:focus {
 
 .target-set-row {
   display: grid;
-  grid-template-columns: auto 1fr 1fr;
+  grid-template-columns: auto 1fr 1fr auto;
   gap: 8px;
   align-items: end;
 }
