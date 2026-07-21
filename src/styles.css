@@ -1085,6 +1085,9 @@ select:focus {
 }
 
 .suggested-plan-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
   margin-top: 2px;
 }
 
@@ -1458,7 +1461,8 @@ select:focus {
 
 @media (max-width: 520px) {
   .two-fields,
-  .form-actions {
+  .form-actions,
+  .suggested-plan-actions {
     grid-template-columns: 1fr;
   }
 

@@ -41,6 +41,22 @@ export function buildSuggestedPlanForSplit(split) {
   return structuredClone(template);
 }
 
+export function shouldShowSuggestedPlan({ plan, selectedWorkout, rejectedSplits }) {
+  if (!plan) return false;
+  if (rejectedSplits?.has?.(canonicalSplitFromTitle(plan.title))) return false;
+  return !(selectedWorkout?.exercises || []).some((exercise) =>
+    plan.exercises.some((planned) => planned.name.toLowerCase() === String(exercise.name || "").toLowerCase())
+  );
+}
+
+function canonicalSplitFromTitle(title) {
+  const normalized = String(title || "").toLowerCase();
+  if (normalized.includes("push")) return "Push";
+  if (normalized.includes("pull")) return "Pull";
+  if (normalized.includes("leg")) return "Legs";
+  return "";
+}
+
 export function canonicalSplit(split) {
   const normalized = String(split || "").trim().toLowerCase();
   if (normalized === "push") return "Push";
