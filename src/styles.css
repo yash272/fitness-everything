@@ -935,6 +935,29 @@ select:focus {
   padding: 0;
 }
 
+
+.quick-split-buttons {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.quick-split-buttons button {
+  min-height: 38px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 650;
+}
+
+.quick-split-buttons button.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
 /* ---------- Set editor ---------- */
 
 .set-editor {
@@ -990,6 +1013,79 @@ select:focus {
   color: var(--faint);
   font-size: 0.76rem;
   line-height: 1.4;
+}
+
+
+/* ---------- Suggested workout plan ---------- */
+.suggested-plan {
+  display: grid;
+  gap: 12px;
+  border-color: var(--accent-line);
+  background: linear-gradient(180deg, var(--accent-soft), var(--surface) 130px);
+}
+
+.suggested-plan-head {
+  align-items: start;
+}
+
+.suggested-plan-list {
+  display: grid;
+  gap: 10px;
+}
+
+.suggested-exercise {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--line-soft);
+  border-radius: 7px;
+  padding: 11px;
+  background: var(--surface);
+}
+
+.suggested-exercise.already-logged {
+  border-color: var(--accent-line);
+}
+
+.suggested-exercise-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: end;
+}
+
+.target-set-grid {
+  display: grid;
+  gap: 7px;
+}
+
+.target-set-row {
+  display: grid;
+  grid-template-columns: auto 1fr 1fr;
+  gap: 8px;
+  align-items: end;
+}
+
+.target-set-row > span {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 42px;
+  border-radius: 5px;
+  background: var(--surface-low);
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.suggested-note {
+  color: var(--faint);
+  font-size: 0.75rem;
+  line-height: 1.45;
+}
+
+.suggested-plan-actions {
+  margin-top: 2px;
 }
 
 /* ---------- Logs: day details ---------- */
