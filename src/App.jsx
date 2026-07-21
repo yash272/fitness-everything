@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Activity, BarChart3, Bolt, CalendarDays, CalendarRange, ChevronLeft, ChevronRight, Download, Dumbbell, Moon, Plus, RefreshCw, Scale, Sun, Trash2 } from "lucide-react";
 import { buildFitnessExport, exportFilename } from "./exportData";
-import { buildSuggestedPlanForSplit, canonicalSplit, shouldShowSuggestedPlan } from "./workoutPlan";
+import { buildSuggestedPlanForSplit, canonicalSplit, shouldShowSuggestedPlan, suggestedPlanDraftStorageKey, suggestedPlanRejectedStorageKey } from "./workoutPlan";
 import { addSetToPlan, removeSetFromPlan, removeSetFromWorkouts } from "./workoutMutations";
 import { isSupabaseConfigured, supabase } from "./supabaseClient";
 
@@ -927,13 +927,55 @@ function CalendarGrid({ month, workouts, bodyLogs, selectedDate, setSelectedDate
   );
 }
 
+function loadSuggestedPlanDraft(selectedDate, selectedSplit) {
+  const fallback = buildSuggestedPlanForSplit(selectedSplit);
+  try {
+    const stored = localStorage.getItem(suggestedPlanDraftStorageKey(selectedDate, selectedSplit));
+    return stored ? JSON.parse(stored) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function saveSuggestedPlanDraft(selectedDate, selectedSplit, planDraft) {
+  try {
+    const key = suggestedPlanDraftStorageKey(selectedDate, selectedSplit);
+    if (planDraft) localStorage.setItem(key, JSON.stringify(planDraft));
+    else localStorage.removeItem(key);
+  } catch {
+    // Ignore storage errors; workout logging still works without draft persistence.
+  }
+}
+
+function loadRejectedSplits(selectedDate) {
+  try {
+    const stored = localStorage.getItem(suggestedPlanRejectedStorageKey(selectedDate));
+    return new Set(stored ? JSON.parse(stored) : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function saveRejectedSplits(selectedDate, rejectedSplits) {
+  try {
+    const key = suggestedPlanRejectedStorageKey(selectedDate);
+    const values = Array.from(rejectedSplits || []);
+    if (values.length) localStorage.setItem(key, JSON.stringify(values));
+    else localStorage.removeItem(key);
+  } catch {
+    // Ignore storage errors; rejecting a suggested plan remains session-only.
+  }
+}
+
 function WorkoutView({ selectedDate, selectedSplit, changeSplit, exerciseForm, setExerciseForm, isAddingExercise, setIsAddingExercise, addExercise, exerciseNames, workoutTypes, selectedWorkout, saveDailyLog, bestBefore, repeatSet, deleteSet, deleteExercise, acceptSuggestedPlan, saving }) {
   const [isEditingType, setIsEditingType] = useState(false);
   const [isEditingSteps, setIsEditingSteps] = useState(false);
   const [typeDraft, setTypeDraft] = useState(selectedSplit);
   const [stepsDraft, setStepsDraft] = useState(selectedWorkout?.steps ?? "");
-  const [planDraft, setPlanDraft] = useState(() => buildSuggestedPlanForSplit(selectedSplit));
-  const [rejectedSplits, setRejectedSplits] = useState(() => new Set());
+  const [planDraft, setPlanDraft] = useState(() => loadSuggestedPlanDraft(selectedDate, selectedSplit));
+  const [rejectedSplits, setRejectedSplits] = useState(() => loadRejectedSplits(selectedDate));
+  const planDraftStorageKeyRef = useRef(suggestedPlanDraftStorageKey(selectedDate, selectedSplit));
+  const rejectedSplitsStorageKeyRef = useRef(suggestedPlanRejectedStorageKey(selectedDate));
   const workoutTypeTitle = selectedSplit ? workoutTypeLabel(selectedSplit) : "Workout Type";
   const existingExerciseNames = useMemo(() => new Set((selectedWorkout?.exercises || []).map((exercise) => exercise.name.toLowerCase())), [selectedWorkout?.exercises]);
   const showSuggestedPlan = shouldShowSuggestedPlan({ plan: planDraft, selectedWorkout, rejectedSplits });
@@ -949,12 +991,24 @@ function WorkoutView({ selectedDate, selectedSplit, changeSplit, exerciseForm, s
   }, [selectedDate, selectedWorkout?.steps]);
 
   useEffect(() => {
-    setPlanDraft(buildSuggestedPlanForSplit(selectedSplit));
+    planDraftStorageKeyRef.current = suggestedPlanDraftStorageKey(selectedDate, selectedSplit);
+    setPlanDraft(loadSuggestedPlanDraft(selectedDate, selectedSplit));
   }, [selectedSplit, selectedDate]);
 
   useEffect(() => {
-    setRejectedSplits(new Set());
+    rejectedSplitsStorageKeyRef.current = suggestedPlanRejectedStorageKey(selectedDate);
+    setRejectedSplits(loadRejectedSplits(selectedDate));
   }, [selectedDate]);
+
+  useEffect(() => {
+    if (planDraftStorageKeyRef.current !== suggestedPlanDraftStorageKey(selectedDate, selectedSplit)) return;
+    saveSuggestedPlanDraft(selectedDate, selectedSplit, planDraft);
+  }, [selectedDate, selectedSplit, planDraft]);
+
+  useEffect(() => {
+    if (rejectedSplitsStorageKeyRef.current !== suggestedPlanRejectedStorageKey(selectedDate)) return;
+    saveRejectedSplits(selectedDate, rejectedSplits);
+  }, [selectedDate, rejectedSplits]);
 
   async function saveWorkoutType(event) {
     event.preventDefault();
