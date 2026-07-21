@@ -41,12 +41,10 @@ export function buildSuggestedPlanForSplit(split) {
   return structuredClone(template);
 }
 
-export function shouldShowSuggestedPlan({ plan, selectedWorkout, rejectedSplits }) {
-  if (!plan) return false;
+export function shouldShowSuggestedPlan({ plan, rejectedSplits }) {
+  if (!plan?.exercises?.length) return false;
   if (rejectedSplits?.has?.(canonicalSplitFromTitle(plan.title))) return false;
-  return !(selectedWorkout?.exercises || []).some((exercise) =>
-    plan.exercises.some((planned) => planned.name.toLowerCase() === String(exercise.name || "").toLowerCase())
-  );
+  return true;
 }
 
 function canonicalSplitFromTitle(title) {

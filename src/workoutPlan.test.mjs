@@ -46,6 +46,7 @@ assert.equal(WORKOUT_PLAN_TEMPLATES.Push.exercises[0].name, "Flat Dumbbell Bench
 
 
 assert.equal(shouldShowSuggestedPlan({ plan: pushPlan, selectedWorkout: { exercises: [] }, rejectedSplits: new Set() }), true);
-assert.equal(shouldShowSuggestedPlan({ plan: pushPlan, selectedWorkout: { exercises: [{ name: "Flat Dumbbell Bench Press" }] }, rejectedSplits: new Set() }), false);
+assert.equal(shouldShowSuggestedPlan({ plan: pushPlan, selectedWorkout: { exercises: [{ name: "Flat Dumbbell Bench Press" }] }, rejectedSplits: new Set() }), true);
 assert.equal(shouldShowSuggestedPlan({ plan: pushPlan, selectedWorkout: { exercises: [] }, rejectedSplits: new Set(["Push"]) }), false);
+assert.equal(shouldShowSuggestedPlan({ plan: { ...pushPlan, exercises: [] }, selectedWorkout: { exercises: [] }, rejectedSplits: new Set() }), false);
 assert.equal(shouldShowSuggestedPlan({ plan: null, selectedWorkout: { exercises: [] }, rejectedSplits: new Set() }), false);
