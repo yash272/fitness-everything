@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Activity, BarChart3, Bolt, CalendarDays, CalendarRange, ChevronLeft, ChevronRight, Download, Dumbbell, Moon, Plus, RefreshCw, Scale, Sun, Trash2 } from "lucide-react";
 import { buildFitnessExport, exportFilename } from "./exportData";
 import { buildSuggestedPlanForSplit, canonicalSplit, shouldShowSuggestedPlan } from "./workoutPlan";
-import { removeSetFromPlan, removeSetFromWorkouts } from "./workoutMutations";
+import { addSetToPlan, removeSetFromPlan, removeSetFromWorkouts } from "./workoutMutations";
 import { isSupabaseConfigured, supabase } from "./supabaseClient";
 
 const DEFAULT_WORKOUT_TYPES = ["Push", "Pull", "Legs", "Cardio", "Sports", "Mobility"];
@@ -1017,6 +1017,10 @@ function WorkoutView({ selectedDate, selectedSplit, changeSplit, exerciseForm, s
     setPlanDraft((plan) => removeSetFromPlan(plan, exerciseIndex, setIndex));
   }
 
+  function addPlanSet(exerciseIndex) {
+    setPlanDraft((plan) => addSetToPlan(plan, exerciseIndex));
+  }
+
   function addPlanExercise() {
     setPlanDraft((plan) => plan ? ({
       ...plan,
@@ -1124,6 +1128,7 @@ function WorkoutView({ selectedDate, selectedSplit, changeSplit, exerciseForm, s
           exerciseNames={exerciseNames}
           updateExercise={updatePlanExercise}
           updateSet={updatePlanSet}
+          addSet={addPlanSet}
           removeSet={removePlanSet}
           removeExercise={removePlanExercise}
           addExercise={addPlanExercise}
@@ -1241,7 +1246,7 @@ function WorkoutView({ selectedDate, selectedSplit, changeSplit, exerciseForm, s
   );
 }
 
-function SuggestedWorkoutPlan({ plan, existingExerciseNames, exerciseNames, updateExercise, updateSet, removeSet, removeExercise, addExercise, acceptExercise, rejectPlan, saving }) {
+function SuggestedWorkoutPlan({ plan, existingExerciseNames, exerciseNames, updateExercise, updateSet, addSet, removeSet, removeExercise, addExercise, acceptExercise, rejectPlan, saving }) {
   const canLogExercise = (exercise) => exercise.name.trim() && exercise.sets.some((set) => set.reps && set.weight !== "");
 
   return (
@@ -1288,6 +1293,7 @@ function SuggestedWorkoutPlan({ plan, existingExerciseNames, exerciseNames, upda
                   </div>
                 ))}
               </div>
+              <button type="button" className="secondary suggested-add-set" onClick={() => addSet(exerciseIndex)} disabled={saving}><Plus size={16} />Add Set</button>
               {exercise.note || alreadyLogged ? (
                 <p className="suggested-note">
                   {alreadyLogged ? "Already logged today. Logging this will add another copy unless you remove this suggestion. " : ""}{exercise.note}

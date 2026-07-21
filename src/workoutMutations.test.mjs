@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { removeSetFromPlan, removeSetFromWorkouts } from "./workoutMutations.js";
+import { addSetToPlan, removeSetFromPlan, removeSetFromWorkouts } from "./workoutMutations.js";
 
 const workouts = [
   {
@@ -51,3 +51,17 @@ assert.notEqual(planAfterSetRemoval.exercises[0], plan.exercises[0]);
 const planWithOneSet = removeSetFromPlan(plan, 1, 0);
 assert.equal(planWithOneSet.exercises[1].sets.length, 1);
 assert.deepEqual(planWithOneSet.exercises[1].sets, [{ reps: "10", weight: "30" }]);
+
+
+const planAfterAddingSet = addSetToPlan(plan, 0);
+assert.deepEqual(planAfterAddingSet.exercises[0].sets, [
+  { reps: "7", weight: "40" },
+  { reps: "8", weight: "40" },
+  { reps: "8", weight: "40" }
+]);
+assert.deepEqual(plan.exercises[0].sets, [{ reps: "7", weight: "40" }, { reps: "8", weight: "40" }]);
+assert.notEqual(planAfterAddingSet, plan);
+assert.notEqual(planAfterAddingSet.exercises[0], plan.exercises[0]);
+
+const planAfterAddingBlankSet = addSetToPlan({ exercises: [{ name: "New movement", sets: [] }] }, 0);
+assert.deepEqual(planAfterAddingBlankSet.exercises[0].sets, [{ reps: "", weight: "", duration: "" }]);
