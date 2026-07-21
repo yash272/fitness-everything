@@ -1090,6 +1090,20 @@ select:focus {
   line-height: 1.45;
 }
 
+
+.suggested-exercise-actions {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+@media (max-width: 540px) {
+  .suggested-exercise-actions {
+    grid-template-columns: 1fr;
+  }
+}
+
 .suggested-plan-actions {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;

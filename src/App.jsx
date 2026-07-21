@@ -329,7 +329,7 @@ function Tracker() {
 
         setWorkouts((items) => upsertExercise(items, workout.id, { ...exercise, exercise_sets: sets }));
       }
-      setNotice("Suggested workout accepted. You can still edit by deleting or adding exercises/sets.");
+      setNotice(suggestions.length === 1 ? `${suggestions[0].name} logged and removed from the plan.` : "Suggested exercises logged. You can still edit by deleting or adding exercises/sets.");
       return true;
     } catch (error) {
       setNotice(error.message);
@@ -1030,9 +1030,17 @@ function WorkoutView({ selectedDate, selectedSplit, changeSplit, exerciseForm, s
     setPlanDraft(null);
   }
 
-  async function acceptPlan() {
-    const accepted = await acceptSuggestedPlan(planDraft.exercises);
-    if (accepted) setPlanDraft(null);
+  async function acceptPlanExercise(index) {
+    const exercise = planDraft?.exercises?.[index];
+    if (!exercise) return;
+    const accepted = await acceptSuggestedPlan([exercise]);
+    if (accepted) {
+      setPlanDraft((plan) => {
+        if (!plan) return plan;
+        const remainingExercises = plan.exercises.filter((_exercise, exerciseIndex) => exerciseIndex !== index);
+        return remainingExercises.length ? { ...plan, exercises: remainingExercises } : null;
+      });
+    }
   }
 
   return (
@@ -1119,7 +1127,7 @@ function WorkoutView({ selectedDate, selectedSplit, changeSplit, exerciseForm, s
           removeSet={removePlanSet}
           removeExercise={removePlanExercise}
           addExercise={addPlanExercise}
-          acceptPlan={acceptPlan}
+          acceptExercise={acceptPlanExercise}
           rejectPlan={rejectPlan}
           saving={saving}
         />
@@ -1233,8 +1241,8 @@ function WorkoutView({ selectedDate, selectedSplit, changeSplit, exerciseForm, s
   );
 }
 
-function SuggestedWorkoutPlan({ plan, existingExerciseNames, exerciseNames, updateExercise, updateSet, removeSet, removeExercise, addExercise, acceptPlan, rejectPlan, saving }) {
-  const acceptDisabled = saving || !plan.exercises.some((exercise) => exercise.name.trim() && exercise.sets.some((set) => set.reps && set.weight !== ""));
+function SuggestedWorkoutPlan({ plan, existingExerciseNames, exerciseNames, updateExercise, updateSet, removeSet, removeExercise, addExercise, acceptExercise, rejectPlan, saving }) {
+  const canLogExercise = (exercise) => exercise.name.trim() && exercise.sets.some((set) => set.reps && set.weight !== "");
 
   return (
     <section className="panel-section suggested-plan">
@@ -1243,7 +1251,7 @@ function SuggestedWorkoutPlan({ plan, existingExerciseNames, exerciseNames, upda
           <h2>{plan.title}</h2>
           <p>{plan.description}</p>
         </div>
-        <span className="badge">Editable</span>
+        <span className="badge">Log one by one</span>
       </div>
       <datalist id="suggested-exercise-options">
         {exerciseNames.map((name) => <option key={name} value={name} />)}
@@ -1282,9 +1290,13 @@ function SuggestedWorkoutPlan({ plan, existingExerciseNames, exerciseNames, upda
               </div>
               {exercise.note || alreadyLogged ? (
                 <p className="suggested-note">
-                  {alreadyLogged ? "Already logged today. Accepting will add another copy unless you remove this suggestion. " : ""}{exercise.note}
+                  {alreadyLogged ? "Already logged today. Logging this will add another copy unless you remove this suggestion. " : ""}{exercise.note}
                 </p>
               ) : null}
+              <div className="suggested-exercise-actions">
+                <button type="button" className="primary" onClick={() => acceptExercise(exerciseIndex)} disabled={saving || !canLogExercise(exercise)}><Dumbbell size={17} />Log this exercise</button>
+                <button type="button" className="secondary" onClick={() => removeExercise(exerciseIndex)} disabled={saving}>Skip</button>
+              </div>
             </article>
           );
         })}
@@ -1292,7 +1304,6 @@ function SuggestedWorkoutPlan({ plan, existingExerciseNames, exerciseNames, upda
       <div className="suggested-plan-actions">
         <button type="button" className="secondary" onClick={addExercise}><Plus size={17} />Add Exercise</button>
         <button type="button" className="secondary" onClick={rejectPlan} disabled={saving}>Reject Plan</button>
-        <button type="button" className="primary" onClick={acceptPlan} disabled={acceptDisabled}><Dumbbell size={18} />Accept Plan</button>
       </div>
     </section>
   );
