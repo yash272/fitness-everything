@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Activity, BarChart3, Bolt, CalendarDays, CalendarRange, ChevronLeft, ChevronRight, Download, Dumbbell, Moon, Plus, RefreshCw, Scale, Sun, Trash2 } from "lucide-react";
 import { buildFitnessExport, exportFilename } from "./exportData";
 import { buildSuggestedPlanForSplit, canonicalSplit, shouldShowSuggestedPlan } from "./workoutPlan";
-import { removeSetFromWorkouts } from "./workoutMutations";
+import { removeSetFromPlan, removeSetFromWorkouts } from "./workoutMutations";
 import { isSupabaseConfigured, supabase } from "./supabaseClient";
 
 const DEFAULT_WORKOUT_TYPES = ["Push", "Pull", "Legs", "Cardio", "Sports", "Mobility"];
@@ -1013,6 +1013,10 @@ function WorkoutView({ selectedDate, selectedSplit, changeSplit, exerciseForm, s
     setPlanDraft((plan) => plan ? ({ ...plan, exercises: plan.exercises.filter((_exercise, exerciseIndex) => exerciseIndex !== index) }) : plan);
   }
 
+  function removePlanSet(exerciseIndex, setIndex) {
+    setPlanDraft((plan) => removeSetFromPlan(plan, exerciseIndex, setIndex));
+  }
+
   function addPlanExercise() {
     setPlanDraft((plan) => plan ? ({
       ...plan,
@@ -1112,6 +1116,7 @@ function WorkoutView({ selectedDate, selectedSplit, changeSplit, exerciseForm, s
           exerciseNames={exerciseNames}
           updateExercise={updatePlanExercise}
           updateSet={updatePlanSet}
+          removeSet={removePlanSet}
           removeExercise={removePlanExercise}
           addExercise={addPlanExercise}
           acceptPlan={acceptPlan}
@@ -1228,7 +1233,7 @@ function WorkoutView({ selectedDate, selectedSplit, changeSplit, exerciseForm, s
   );
 }
 
-function SuggestedWorkoutPlan({ plan, existingExerciseNames, exerciseNames, updateExercise, updateSet, removeExercise, addExercise, acceptPlan, rejectPlan, saving }) {
+function SuggestedWorkoutPlan({ plan, existingExerciseNames, exerciseNames, updateExercise, updateSet, removeSet, removeExercise, addExercise, acceptPlan, rejectPlan, saving }) {
   const acceptDisabled = saving || !plan.exercises.some((exercise) => exercise.name.trim() && exercise.sets.some((set) => set.reps && set.weight !== ""));
 
   return (
@@ -1269,6 +1274,9 @@ function SuggestedWorkoutPlan({ plan, existingExerciseNames, exerciseNames, upda
                       Lbs
                       <input type="number" min="0" step="2.5" inputMode="decimal" value={set.weight} onChange={(event) => updateSet(exerciseIndex, setIndex, "weight", event.target.value)} />
                     </label>
+                    <button type="button" className="danger icon-only" onClick={() => removeSet(exerciseIndex, setIndex)} disabled={exercise.sets.length === 1} aria-label={`Remove target set ${setIndex + 1} from ${exercise.name || "exercise"}`} title={`Remove target set ${setIndex + 1}`}>
+                      <Trash2 size={14} />
+                    </button>
                   </div>
                 ))}
               </div>

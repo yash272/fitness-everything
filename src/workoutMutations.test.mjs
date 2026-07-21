@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { removeSetFromWorkouts } from "./workoutMutations.js";
+import { removeSetFromPlan, removeSetFromWorkouts } from "./workoutMutations.js";
 
 const workouts = [
   {
@@ -32,3 +32,22 @@ assert.notEqual(updated[0].exercises[0], workouts[0].exercises[0]);
 
 const unchanged = removeSetFromWorkouts(workouts, "missing-set");
 assert.deepEqual(unchanged, workouts);
+
+
+const plan = {
+  title: "Suggested Push Day",
+  exercises: [
+    { name: "Bench", sets: [{ reps: "7", weight: "40" }, { reps: "8", weight: "40" }] },
+    { name: "Press", sets: [{ reps: "10", weight: "30" }] }
+  ]
+};
+const planAfterSetRemoval = removeSetFromPlan(plan, 0, 1);
+assert.deepEqual(planAfterSetRemoval.exercises[0].sets, [{ reps: "7", weight: "40" }]);
+assert.deepEqual(planAfterSetRemoval.exercises[1].sets, [{ reps: "10", weight: "30" }]);
+assert.deepEqual(plan.exercises[0].sets, [{ reps: "7", weight: "40" }, { reps: "8", weight: "40" }]);
+assert.notEqual(planAfterSetRemoval, plan);
+assert.notEqual(planAfterSetRemoval.exercises[0], plan.exercises[0]);
+
+const planWithOneSet = removeSetFromPlan(plan, 1, 0);
+assert.equal(planWithOneSet.exercises[1].sets.length, 1);
+assert.deepEqual(planWithOneSet.exercises[1].sets, [{ reps: "10", weight: "30" }]);
