@@ -22,3 +22,20 @@ export function removeSetFromPlan(plan, exerciseIndex, setIndex) {
     })
   };
 }
+
+export function addSetToPlan(plan, exerciseIndex) {
+  if (!plan) return plan;
+  return {
+    ...plan,
+    exercises: (plan.exercises || []).map((exercise, index) => {
+      if (index !== exerciseIndex) return exercise;
+      const sets = exercise.sets || [];
+      const lastSet = sets.at(-1);
+      const nextSet = lastSet ? { ...lastSet } : { reps: "", weight: "", duration: "" };
+      return {
+        ...exercise,
+        sets: [...sets, nextSet]
+      };
+    })
+  };
+}

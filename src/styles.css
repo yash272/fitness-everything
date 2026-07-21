@@ -1084,6 +1084,13 @@ select:focus {
   font-variant-numeric: tabular-nums;
 }
 
+
+.suggested-add-set {
+  width: 100%;
+  min-height: 34px;
+  margin-top: 8px;
+}
+
 .suggested-note {
   color: var(--faint);
   font-size: 0.75rem;
