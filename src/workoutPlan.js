@@ -41,6 +41,10 @@ export function buildSuggestedPlanForSplit(split) {
   return structuredClone(template);
 }
 
+export function restoreSuggestedPlanForSplit(split) {
+  return buildSuggestedPlanForSplit(split);
+}
+
 export function shouldShowSuggestedPlan({ plan, hiddenSplits }) {
   if (!plan?.exercises?.length) return false;
   if (hiddenSplits?.has?.(canonicalSplitFromTitle(plan.title))) return false;

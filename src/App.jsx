@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Activity, BarChart3, Bolt, CalendarDays, CalendarRange, ChevronLeft, ChevronRight, Download, Dumbbell, Moon, Plus, RefreshCw, Scale, Sun, Trash2 } from "lucide-react";
 import { buildFitnessExport, exportFilename } from "./exportData";
-import { buildSuggestedPlanForSplit, canonicalSplit, shouldShowSuggestedPlan, suggestedPlanDraftStorageKey, suggestedPlanHiddenStorageKey } from "./workoutPlan";
+import { buildSuggestedPlanForSplit, canonicalSplit, restoreSuggestedPlanForSplit, shouldShowSuggestedPlan, suggestedPlanDraftStorageKey, suggestedPlanHiddenStorageKey } from "./workoutPlan";
 import { addSetToPlan, removeSetFromPlan, removeSetFromWorkouts } from "./workoutMutations";
 import { isSupabaseConfigured, supabase } from "./supabaseClient";
 
@@ -981,6 +981,7 @@ function WorkoutView({ selectedDate, selectedSplit, changeSplit, exerciseForm, s
   const selectedCanonicalSplit = canonicalSplit(selectedSplit);
   const isSuggestedPlanHidden = Boolean(selectedCanonicalSplit && hiddenSplits.has(selectedCanonicalSplit));
   const hasSuggestedPlan = Boolean(planDraft?.exercises?.length);
+  const canRestoreSuggestedPlan = Boolean(selectedCanonicalSplit);
   const showSuggestedPlan = shouldShowSuggestedPlan({ plan: planDraft, selectedWorkout, hiddenSplits });
 
   useEffect(() => {
@@ -1100,6 +1101,18 @@ function WorkoutView({ selectedDate, selectedSplit, changeSplit, exerciseForm, s
     });
   }
 
+  function showOriginalPlan() {
+    const split = canonicalSplit(selectedSplit);
+    const originalPlan = restoreSuggestedPlanForSplit(split);
+    if (!split || !originalPlan) return;
+    setPlanDraft(originalPlan);
+    setHiddenSplits((current) => {
+      const next = new Set(current);
+      next.delete(split);
+      return next;
+    });
+  }
+
   async function acceptPlanExercise(index) {
     const exercise = planDraft?.exercises?.[index];
     if (!exercise) return;
@@ -1200,6 +1213,7 @@ function WorkoutView({ selectedDate, selectedSplit, changeSplit, exerciseForm, s
           addExercise={addPlanExercise}
           acceptExercise={acceptPlanExercise}
           hidePlan={hidePlan}
+          showOriginalPlan={showOriginalPlan}
           saving={saving}
         />
       ) : hasSuggestedPlan && isSuggestedPlanHidden ? (
@@ -1208,7 +1222,18 @@ function WorkoutView({ selectedDate, selectedSplit, changeSplit, exerciseForm, s
             <h2>{planDraft.title}</h2>
             <p>Plan hidden. Show it when you want to continue your checklist.</p>
           </div>
-          <button type="button" className="primary" onClick={showPlan}>Show Plan</button>
+          <div className="suggested-toggle-actions">
+            <button type="button" className="secondary" onClick={showOriginalPlan}>Reset Original Plan</button>
+            <button type="button" className="primary" onClick={showPlan}>Show Plan</button>
+          </div>
+        </section>
+      ) : canRestoreSuggestedPlan ? (
+        <section className="panel-section suggested-plan-toggle">
+          <div>
+            <h2>Suggested {selectedCanonicalSplit} Day</h2>
+            <p>Plan is empty. Reset it to bring back skipped exercises.</p>
+          </div>
+          <button type="button" className="primary" onClick={showOriginalPlan}><RefreshCw size={17} />Reset Original Plan</button>
         </section>
       ) : null}
 
@@ -1320,7 +1345,7 @@ function WorkoutView({ selectedDate, selectedSplit, changeSplit, exerciseForm, s
   );
 }
 
-function SuggestedWorkoutPlan({ plan, existingExerciseNames, exerciseNames, updateExercise, updateSet, addSet, removeSet, removeExercise, addExercise, acceptExercise, hidePlan, saving }) {
+function SuggestedWorkoutPlan({ plan, existingExerciseNames, exerciseNames, updateExercise, updateSet, addSet, removeSet, removeExercise, addExercise, acceptExercise, hidePlan, showOriginalPlan, saving }) {
   const canLogExercise = (exercise) => exercise.name.trim() && exercise.sets.some((set) => set.reps && set.weight !== "");
 
   return (
@@ -1383,6 +1408,7 @@ function SuggestedWorkoutPlan({ plan, existingExerciseNames, exerciseNames, upda
       </div>
       <div className="suggested-plan-actions">
         <button type="button" className="secondary" onClick={addExercise}><Plus size={17} />Add Exercise</button>
+        <button type="button" className="secondary" onClick={showOriginalPlan} disabled={saving}><RefreshCw size={17} />Reset Original Plan</button>
         <button type="button" className="secondary" onClick={hidePlan} disabled={saving}>Hide Plan</button>
       </div>
     </section>
