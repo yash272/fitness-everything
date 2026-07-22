@@ -41,9 +41,9 @@ export function buildSuggestedPlanForSplit(split) {
   return structuredClone(template);
 }
 
-export function shouldShowSuggestedPlan({ plan, rejectedSplits }) {
+export function shouldShowSuggestedPlan({ plan, hiddenSplits }) {
   if (!plan?.exercises?.length) return false;
-  if (rejectedSplits?.has?.(canonicalSplitFromTitle(plan.title))) return false;
+  if (hiddenSplits?.has?.(canonicalSplitFromTitle(plan.title))) return false;
   return true;
 }
 
@@ -51,8 +51,8 @@ export function suggestedPlanDraftStorageKey(date, split) {
   return `fitness-suggested-plan-draft:${date}:${canonicalSplit(split) || "none"}`;
 }
 
-export function suggestedPlanRejectedStorageKey(date) {
-  return `fitness-suggested-plan-rejected:${date}`;
+export function suggestedPlanHiddenStorageKey(date) {
+  return `fitness-suggested-plan-hidden:${date}`;
 }
 
 function canonicalSplitFromTitle(title) {
