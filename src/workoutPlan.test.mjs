@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { buildSuggestedPlanForSplit, shouldShowSuggestedPlan, suggestedPlanDraftStorageKey, suggestedPlanRejectedStorageKey, WORKOUT_PLAN_TEMPLATES } from "./workoutPlan.js";
+import { buildSuggestedPlanForSplit, shouldShowSuggestedPlan, suggestedPlanDraftStorageKey, suggestedPlanHiddenStorageKey, WORKOUT_PLAN_TEMPLATES } from "./workoutPlan.js";
 
 const pushPlan = buildSuggestedPlanForSplit("Push");
 assert.equal(pushPlan.title, "Suggested Push Day");
@@ -45,13 +45,13 @@ mutated.exercises[0].name = "Changed";
 assert.equal(WORKOUT_PLAN_TEMPLATES.Push.exercises[0].name, "Flat Dumbbell Bench Press");
 
 
-assert.equal(shouldShowSuggestedPlan({ plan: pushPlan, selectedWorkout: { exercises: [] }, rejectedSplits: new Set() }), true);
-assert.equal(shouldShowSuggestedPlan({ plan: pushPlan, selectedWorkout: { exercises: [{ name: "Flat Dumbbell Bench Press" }] }, rejectedSplits: new Set() }), true);
-assert.equal(shouldShowSuggestedPlan({ plan: pushPlan, selectedWorkout: { exercises: [] }, rejectedSplits: new Set(["Push"]) }), false);
-assert.equal(shouldShowSuggestedPlan({ plan: { ...pushPlan, exercises: [] }, selectedWorkout: { exercises: [] }, rejectedSplits: new Set() }), false);
-assert.equal(shouldShowSuggestedPlan({ plan: null, selectedWorkout: { exercises: [] }, rejectedSplits: new Set() }), false);
+assert.equal(shouldShowSuggestedPlan({ plan: pushPlan, selectedWorkout: { exercises: [] }, hiddenSplits: new Set() }), true);
+assert.equal(shouldShowSuggestedPlan({ plan: pushPlan, selectedWorkout: { exercises: [{ name: "Flat Dumbbell Bench Press" }] }, hiddenSplits: new Set() }), true);
+assert.equal(shouldShowSuggestedPlan({ plan: pushPlan, selectedWorkout: { exercises: [] }, hiddenSplits: new Set(["Push"]) }), false);
+assert.equal(shouldShowSuggestedPlan({ plan: { ...pushPlan, exercises: [] }, selectedWorkout: { exercises: [] }, hiddenSplits: new Set() }), false);
+assert.equal(shouldShowSuggestedPlan({ plan: null, selectedWorkout: { exercises: [] }, hiddenSplits: new Set() }), false);
 
 
 assert.equal(suggestedPlanDraftStorageKey("2026-07-21", "push"), "fitness-suggested-plan-draft:2026-07-21:Push");
 assert.equal(suggestedPlanDraftStorageKey("2026-07-21", "Sports"), "fitness-suggested-plan-draft:2026-07-21:none");
-assert.equal(suggestedPlanRejectedStorageKey("2026-07-21"), "fitness-suggested-plan-rejected:2026-07-21");
+assert.equal(suggestedPlanHiddenStorageKey("2026-07-21"), "fitness-suggested-plan-hidden:2026-07-21");

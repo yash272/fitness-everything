@@ -1113,9 +1113,22 @@ select:focus {
 
 .suggested-plan-actions {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: 1fr 1fr;
   gap: 8px;
   margin-top: 2px;
+}
+
+.suggested-plan-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.suggested-plan-toggle p {
+  color: var(--muted);
+  font-size: 0.82rem;
+  margin-top: 4px;
 }
 
 /* ---------- Logs: day details ---------- */
