@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { buildSuggestedPlanForSplit, shouldShowSuggestedPlan, suggestedPlanDraftStorageKey, suggestedPlanHiddenStorageKey, WORKOUT_PLAN_TEMPLATES } from "./workoutPlan.js";
+import { buildSuggestedPlanForSplit, restoreSuggestedPlanForSplit, shouldShowSuggestedPlan, suggestedPlanDraftStorageKey, suggestedPlanHiddenStorageKey, WORKOUT_PLAN_TEMPLATES } from "./workoutPlan.js";
 
 const pushPlan = buildSuggestedPlanForSplit("Push");
 assert.equal(pushPlan.title, "Suggested Push Day");
@@ -39,6 +39,22 @@ assert.equal(legsPlan.exercises[2].sets[0].weight, "115");
 
 const unknownPlan = buildSuggestedPlanForSplit("Sports");
 assert.equal(unknownPlan, null);
+
+const editedPullPlan = buildSuggestedPlanForSplit("Pull");
+editedPullPlan.exercises = editedPullPlan.exercises.slice(1);
+editedPullPlan.exercises[0].sets[0].weight = "1";
+const restoredPullPlan = restoreSuggestedPlanForSplit("Pull");
+assert.deepEqual(restoredPullPlan.exercises.map((exercise) => exercise.name), [
+  "Lat Pulldown",
+  "Low Row",
+  "Machine Rear Delt",
+  "Bicep Curl",
+  "Hammer Curl"
+]);
+assert.equal(restoredPullPlan.exercises[0].sets[0].weight, "120");
+assert.notDeepEqual(restoredPullPlan, editedPullPlan);
+assert.equal(restoreSuggestedPlanForSplit("Sports"), null);
+
 
 const mutated = buildSuggestedPlanForSplit("Push");
 mutated.exercises[0].name = "Changed";
