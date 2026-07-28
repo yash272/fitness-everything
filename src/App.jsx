@@ -643,9 +643,9 @@ function Dashboard({ workoutSets, todayWorkout, todayPrs, latestBody, weekDays, 
       <div className="dashboard-after-grid">
         <section className="stat-grid dashboard-support-stats">
           <Stat label="Today" value={didWorkoutToday ? workoutTypeLabel(todayWorkout.split) : "Rest"} detail={didWorkoutToday ? `${workoutSets} sets - ${todayWorkout?.exercises?.length || 0} exercises - ${todayPrs} PR sets` : "No exercise sets logged today"} />
+          <Stat label="Steps Today" value={todaySteps ? todaySteps.toLocaleString() : "--"} detail={todaySteps ? "Logged today" : "No steps yet"} />
           <Stat label="This Week" value={`${weekDays} days`} detail="Workout days since Monday" />
           <Stat label="This Month" value={`${monthDays} days`} detail="Workout days this month" />
-          <Stat label="Steps Today" value={todaySteps ? todaySteps.toLocaleString() : "--"} detail={todaySteps ? "Logged today" : "No steps yet"} />
         </section>
 
         <section className="panel-section pr-panel">

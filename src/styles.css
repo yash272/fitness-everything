@@ -82,11 +82,16 @@ select {
 button {
   border: 0;
   cursor: pointer;
-  transition: border-color 140ms ease, background 140ms ease, color 140ms ease, opacity 140ms ease;
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    background-color 160ms ease,
+    color 160ms ease,
+    opacity 160ms ease;
 }
 
 button:active {
-  opacity: 0.85;
+  transform: scale(0.98);
 }
 
 button:disabled {
@@ -577,6 +582,7 @@ input[type="number"] {
   border: 1px solid var(--line);
   border-radius: 7px;
   background: var(--surface-low);
+  transition: border-color 160ms ease, background-color 160ms ease;
 }
 
 .segmented button {
@@ -772,10 +778,12 @@ select:focus {
   stroke-linejoin: round;
   stroke-width: 2;
   vector-effect: non-scaling-stroke;
+  transition: opacity 160ms ease, stroke 160ms ease;
 }
 
 .chart-area {
   fill: var(--chart-area);
+  transition: opacity 160ms ease, fill 160ms ease;
 }
 
 .chart-gridline {
@@ -792,6 +800,10 @@ select:focus {
   border-radius: 50%;
   background: transparent;
   transform: translate(-50%, -50%);
+}
+
+.chart-hit:active {
+  transform: translate(-50%, -50%) scale(0.98);
 }
 
 .chart-hit::after {
@@ -1093,6 +1105,22 @@ select:focus {
 
 .add-exercise-bar {
   margin-bottom: 12px;
+}
+
+.add-exercise-form {
+  animation: add-exercise-enter 170ms ease-out;
+}
+
+@keyframes add-exercise-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .add-exercise-toggle {
@@ -1456,6 +1484,16 @@ select:focus {
   color: var(--accent);
 }
 
+.mobile-tabs button.workout-tab {
+  color: color-mix(in srgb, var(--text) 72%, transparent);
+}
+
+.mobile-tabs button.workout-tab.active,
+.desktop-tabs button.workout-tab.active {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
 /* ---------- Shell / setup ---------- */
 
 .auth,
@@ -1605,7 +1643,15 @@ select:focus {
   }
 
   .app {
+    width: min(100%, 1160px);
     padding: 0 24px 40px;
+  }
+
+  .app.view-workout,
+  .app.view-daily,
+  .app.view-body {
+    max-width: 920px;
+    margin-inline: auto;
   }
 
   .hero-row {
@@ -1664,9 +1710,20 @@ select:focus {
 }
 
 @media (min-width: 1040px) {
-  .dashboard-after-grid {
-    grid-template-columns: minmax(0, 3fr) minmax(300px, 2fr);
+  .dashboard-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.55fr) minmax(300px, 0.85fr);
+    gap: 14px;
     align-items: start;
+  }
+
+  .dashboard-focus,
+  .dashboard-after-grid {
+    margin-bottom: 0;
+  }
+
+  .dashboard-after-grid {
+    grid-template-columns: 1fr;
   }
 
   .dashboard-support-stats {
