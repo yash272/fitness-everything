@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { Activity, BarChart3, Bolt, CalendarDays, CalendarRange, ChevronLeft, ChevronRight, Download, Dumbbell, Moon, Plus, RefreshCw, Scale, Sun, Trash2 } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "./supabaseClient";
 import { buildWeightChartModel } from "./weightChartUtils";
+import { hasWorkoutActivity, workoutStatusLabel, workoutTypeForEdit, workoutTypeLabel } from "./workoutDisplayUtils";
 
 const DEFAULT_WORKOUT_TYPES = ["Push", "Pull", "Legs", "Cardio", "Sports", "Mobility"];
 const DEFAULT_EXERCISES = {
@@ -642,7 +643,7 @@ function Dashboard({ workoutSets, todayWorkout, todayPrs, latestBody, weekDays, 
 
       <div className="dashboard-after-grid">
         <section className="stat-grid dashboard-support-stats">
-          <Stat label="Today" value={didWorkoutToday ? workoutTypeLabel(todayWorkout.split) : "Rest"} detail={didWorkoutToday ? `${workoutSets} sets - ${todayWorkout?.exercises?.length || 0} exercises - ${todayPrs} PR sets` : "No exercise sets logged today"} />
+          <Stat label="Today" value={workoutStatusLabel(todayWorkout)} detail={didWorkoutToday ? `${workoutSets} sets - ${todayWorkout?.exercises?.length || 0} exercises - ${todayPrs} PR sets` : "No exercise sets logged today"} />
           <Stat label="Steps Today" value={todaySteps ? todaySteps.toLocaleString() : "--"} detail={todaySteps ? "Logged today" : "No steps yet"} />
           <Stat label="This Week" value={`${weekDays} days`} detail="Workout days since Monday" />
           <Stat label="This Month" value={`${monthDays} days`} detail="Workout days this month" />
@@ -653,15 +654,18 @@ function Dashboard({ workoutSets, todayWorkout, todayPrs, latestBody, weekDays, 
             <h2>Recent PRs</h2>
           </div>
           <div className="list pr-list">
-            {recentPrs.length ? recentPrs.map((pr) => (
-              <div className="row" key={pr.id}>
-                <div>
-                  <strong>{pr.exercise}</strong>
-                  <span>{formatDate(pr.date)} - {workoutTypeLabel(pr.split)}</span>
+            {recentPrs.length ? recentPrs.map((pr) => {
+              const typeLabel = workoutTypeLabel(pr.split);
+              return (
+                <div className="row" key={pr.id}>
+                  <div>
+                    <strong>{pr.exercise}</strong>
+                    <span>{formatDate(pr.date)}{typeLabel ? ` - ${typeLabel}` : ""}</span>
+                  </div>
+                  <b>{formatSet(pr, pr.trackingType)}</b>
                 </div>
-                <b>{formatSet(pr, pr.trackingType)}</b>
-              </div>
-            )) : <Empty text="No PRs yet." />}
+              );
+            }) : <Empty text="No PRs yet." />}
           </div>
         </section>
       </div>
@@ -763,7 +767,7 @@ function WeekGrid({ weekStart, workouts, bodyLogs, selectedDate, setSelectedDate
               {day.getDate()}
             </strong>
             <div>
-              <b>{didWorkout ? workoutTypeLabel(log.split, "Gym") : "Rest"}</b>
+              <b>{workoutStatusLabel(log)}</b>
               <small>{log?.steps ? formatCalendarSteps(log.steps) : "--"}</small>
               <small>{bodyLog ? Number(bodyLog.weight).toFixed(1) : "--"}</small>
             </div>
@@ -793,12 +797,15 @@ function DayWorkoutDetails({ workout, bodyLog }) {
     );
   }
 
+  const typeLabel = workoutTypeLabel(workout.split);
   return (
     <div className="day-detail">
-      <div className="day-summary">
-        <strong>{workoutTypeLabel(workout.split)}</strong>
-        <span>{dailyMeta(workout, bodyLog)}</span>
-      </div>
+      {typeLabel ? (
+        <div className="day-summary">
+          <strong>{typeLabel}</strong>
+          <span>{dailyMeta(workout, bodyLog)}</span>
+        </div>
+      ) : <p className="day-meta">{dailyMeta(workout, bodyLog)}</p>}
       {workout.exercises?.length ? workout.exercises.map((exercise) => (
         <article className="mini-exercise" key={exercise.id}>
           <h3>{exercise.name}</h3>
@@ -808,7 +815,7 @@ function DayWorkoutDetails({ workout, bodyLog }) {
             ))}
           </div>
         </article>
-      )) : <Empty text={`${workoutTypeLabel(workout.split)} day saved. No exercise sets logged yet.`} />}
+      )) : <Empty text="Workout saved. No exercise sets logged yet." />}
     </div>
   );
 }
@@ -836,7 +843,7 @@ function CalendarGrid({ month, workouts, bodyLogs, selectedDate, setSelectedDate
             onClick={() => setSelectedDate(key)}
           >
             <strong>{day.getDate()}</strong>
-            <span className="calendar-workout">{didWorkout ? log.split : isSaved ? "Rest" : ""}</span>
+            <span className="calendar-workout">{didWorkout ? workoutStatusLabel(log) : isSaved ? "Rest" : ""}</span>
             <span className="calendar-metric">{hasSteps ? formatCalendarSteps(log.steps) : ""}</span>
             <small>{bodyLog ? Number(bodyLog.weight).toFixed(1) : ""}</small>
             <span className="calendar-dots" aria-label={`${didWorkout ? "Workout logged" : "Rest day"}, ${hasSteps ? "steps logged" : "no steps"}, ${bodyLog ? "weight logged" : "no weight"}`}>
@@ -1193,7 +1200,12 @@ function WeightChart({ logs, range }) {
             type="button"
             key={point.id}
             className={`chart-hit ${selectedPointId === point.id ? "selected" : ""}`}
-            style={{ left: `${point.x}%`, top: `${point.y}%` }}
+            style={{
+              left: `${point.hitLeft}%`,
+              right: `calc(100% - ${point.hitRight}%)`,
+              "--dot-x": `${point.dotX}%`,
+              "--dot-y": `${point.y}%`
+            }}
             aria-label={`${formatDate(point.log_date)}, ${Number(point.weight).toFixed(1)} kilograms`}
             onClick={() => setSelectedPointId(point.id)}
             onFocus={() => setSelectedPointId(point.id)}
@@ -1281,18 +1293,6 @@ function monthStartKey() {
 
 function workoutDaysWithin(workouts, startDate, endDate) {
   return workouts.filter((workout) => workout.workout_date >= startDate && workout.workout_date <= endDate && hasWorkoutActivity(workout)).length;
-}
-
-function hasWorkoutActivity(workout) {
-  return Boolean(workout?.exercises?.some((exercise) => exercise.exercise_sets?.length));
-}
-
-function workoutTypeForEdit(workout) {
-  return workout?.split?.trim() || "";
-}
-
-function workoutTypeLabel(split, fallback = "Workout") {
-  return split?.trim() || fallback;
 }
 
 function bodyTrend(entry, logs) {

@@ -5,6 +5,25 @@ function localDateKey(date) {
   return `${year}-${month}-${day}`;
 }
 
+export function buildHorizontalHitRegions(points) {
+  if (!points.length) return [];
+
+  return points.map((point, index) => {
+    const hitLeft = index === 0 ? 0 : (points[index - 1].x + point.x) / 2;
+    const hitRight = index === points.length - 1 ? 100 : (point.x + points[index + 1].x) / 2;
+    const hitWidth = hitRight - hitLeft;
+    const dotX = hitWidth ? ((point.x - hitLeft) / hitWidth) * 100 : 50;
+
+    return {
+      ...point,
+      hitLeft,
+      hitRight,
+      hitWidth,
+      dotX
+    };
+  });
+}
+
 export function buildWeightChartModel(logs, range, now = new Date()) {
   const cutoff = new Date(now);
   cutoff.setDate(cutoff.getDate() - range + 1);
@@ -31,11 +50,13 @@ export function buildWeightChartModel(logs, range, now = new Date()) {
   const mid = (min + max) / 2;
   const xFor = (index) => (index / (points.length - 1)) * 100;
   const yFor = (value) => 88 - ((value - min) / (max - min || 1)) * 72;
-  const plottedPoints = points.map((point, index) => ({
-    ...point,
-    x: xFor(index),
-    y: yFor(Number(point.weight))
-  }));
+  const plottedPoints = buildHorizontalHitRegions(
+    points.map((point, index) => ({
+      ...point,
+      x: xFor(index),
+      y: yFor(Number(point.weight))
+    }))
+  );
   const svgPoints = plottedPoints
     .map((point) => `${point.x.toFixed(2)},${point.y.toFixed(2)}`)
     .join(" ");

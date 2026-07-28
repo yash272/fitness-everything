@@ -631,7 +631,7 @@ input[type="number"] {
 .mode-grid button.active {
   border-color: var(--accent);
   background: var(--accent-soft);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 /* ---------- Forms ---------- */
@@ -798,31 +798,36 @@ select:focus {
 
 .chart-hit {
   position: absolute;
-  width: 28px;
-  height: 28px;
+  top: 0;
+  bottom: 0;
+  height: auto;
   padding: 0;
-  border-radius: 50%;
+  border-radius: 0;
   background: transparent;
-  transform: translate(-50%, -50%);
+  transform: none;
 }
 
 .chart-hit:active {
-  transform: translate(-50%, -50%) scale(0.98);
+  transform: none;
 }
 
 .chart-hit::after {
   content: "";
   position: absolute;
-  inset: 10px;
+  left: var(--dot-x);
+  top: var(--dot-y);
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   background: var(--chart-line);
+  transform: translate(-50%, -50%);
   transition: transform 160ms ease, box-shadow 160ms ease;
 }
 
 .chart-hit:hover::after,
 .chart-hit:focus-visible::after,
 .chart-hit.selected::after {
-  transform: scale(1.65);
+  transform: translate(-50%, -50%) scale(1.65);
   box-shadow: 0 0 0 3px rgba(215, 255, 79, 0.2);
 }
 
@@ -1174,6 +1179,11 @@ select:focus {
   margin-top: 10px;
 }
 
+.day-meta {
+  font-size: 0.76rem;
+  line-height: 1.4;
+}
+
 .day-summary,
 .mini-exercise {
   border: 1px solid var(--line-soft);
@@ -1365,7 +1375,7 @@ select:focus {
 }
 
 .calendar-day.trained .calendar-workout {
-  color: var(--accent);
+  color: var(--accent-text);
   font-weight: 600;
 }
 
@@ -1451,7 +1461,7 @@ select:focus {
 }
 
 .week-day.trained b {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .week-day.selected {
@@ -1485,7 +1495,7 @@ select:focus {
 }
 
 .mobile-tabs button.active {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .mobile-tabs button.workout-tab {
