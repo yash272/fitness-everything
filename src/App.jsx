@@ -1180,7 +1180,7 @@ function WeightChart({ logs, range }) {
         <span>{model.mid.toFixed(1)} kg</span>
         <span>{model.min.toFixed(1)} kg</span>
       </div>
-      <div className="chart-plot" ref={plotRef}>
+      <div className="chart-plot" ref={plotRef} key={range}>
         <svg className="chart-svg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
           {[16, 52, 88].map((y) => (
             <line key={y} className="chart-gridline" x1="0" y1={y} x2="100" y2={y} />

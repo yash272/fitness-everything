@@ -107,13 +107,6 @@ select:focus-visible {
   outline-offset: 2px;
 }
 
-@media (hover: none) and (pointer: coarse) {
-  button:focus-visible,
-  a:focus-visible {
-    outline: none;
-  }
-}
-
 h1,
 h2,
 h3,
@@ -761,6 +754,19 @@ select:focus {
 .chart-plot {
   position: absolute;
   inset: 18px 14px 34px 56px;
+  animation: chart-range-enter 170ms ease-out;
+}
+
+@keyframes chart-range-enter {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .chart-svg {
@@ -778,12 +784,10 @@ select:focus {
   stroke-linejoin: round;
   stroke-width: 2;
   vector-effect: non-scaling-stroke;
-  transition: opacity 160ms ease, stroke 160ms ease;
 }
 
 .chart-area {
   fill: var(--chart-area);
-  transition: opacity 160ms ease, fill 160ms ease;
 }
 
 .chart-gridline {
