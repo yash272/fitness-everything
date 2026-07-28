@@ -713,6 +713,11 @@ select:focus {
   color: var(--focus-text);
 }
 
+.primary-accent {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
 .secondary {
   border: 1px solid var(--line);
   background: var(--surface);
@@ -1064,8 +1069,9 @@ select:focus {
   color: var(--focus-text);
 }
 
+.body-entry input,
 .workout-focus input {
-  border-color: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.14);
   background: var(--focus-raised);
   color: var(--focus-text);
 }
@@ -1115,6 +1121,20 @@ select:focus {
 }
 
 /* ---------- Logs: day details ---------- */
+
+.log-navigator {
+  margin-bottom: 10px;
+}
+
+.log-navigator .section-head {
+  margin-bottom: 8px;
+}
+
+.log-focus h2,
+.body-focus h2 {
+  margin-top: 5px;
+  font-size: 1.4rem;
+}
 
 .day-detail {
   display: grid;
@@ -1166,6 +1186,18 @@ select:focus {
   color: var(--muted);
   font-size: 0.8rem;
   font-variant-numeric: tabular-nums;
+}
+
+.log-focus .day-summary,
+.log-focus .mini-exercise {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: var(--focus-raised);
+}
+
+.log-focus .day-summary strong,
+.log-focus .mini-exercise h3,
+.log-focus .mini-exercise span {
+  color: var(--focus-text);
 }
 
 /* ---------- Calendar ---------- */

@@ -684,7 +684,7 @@ function DailyView({ workouts, bodyLogs, selectedDate, setSelectedDate, calendar
 
   return (
     <>
-      <section className="panel-section">
+      <section className="log-navigator">
         <div className="section-head">
           <div>
             <h2>{calendarMode === "week" ? `${formatShortDate(weekStart)} - ${formatShortDate(weekEnd)}` : calendarMonth.toLocaleDateString(undefined, { month: "long", year: "numeric" })}</h2>
@@ -716,7 +716,17 @@ function DailyView({ workouts, bodyLogs, selectedDate, setSelectedDate, calendar
             selectedDate={selectedDate}
             setSelectedDate={setSelectedDate}
           />
-        ) : (
+        ) : null}
+      </section>
+
+      <FocusStage className="log-focus">
+        <span className="stage-label">{formatLongDate(selectedDate)}</span>
+        <h2>Workout</h2>
+        <DayWorkoutDetails workout={selectedLog} bodyLog={selectedBodyLog} />
+      </FocusStage>
+
+      {calendarMode === "month" ? (
+        <section className="panel-section month-calendar-panel">
           <CalendarGrid
             month={calendarMonth}
             workouts={workouts}
@@ -724,13 +734,8 @@ function DailyView({ workouts, bodyLogs, selectedDate, setSelectedDate, calendar
             selectedDate={selectedDate}
             setSelectedDate={setSelectedDate}
           />
-        )}
-      </section>
-
-      <section className="panel-section">
-        <h2>{formatLongDate(selectedDate)} Workouts</h2>
-        <DayWorkoutDetails workout={selectedLog} bodyLog={selectedBodyLog} />
-      </section>
+        </section>
+      ) : null}
     </>
   );
 }
@@ -1072,20 +1077,25 @@ function WorkoutView({ selectedDate, selectedSplit, changeSplit, exerciseForm, s
 function BodyView({ bodyForm, setBodyForm, saveBody, bodyLogs, saving }) {
   return (
     <>
-      <form className="panel-section form" onSubmit={saveBody}>
-        <h2>Log Body</h2>
-        <div className="two-fields">
-          <label>
-            Weight kg
-            <input type="number" min="0" step="0.1" inputMode="decimal" value={bodyForm.weight} placeholder="75.2" onChange={(event) => setBodyForm({ ...bodyForm, weight: event.target.value })} />
-          </label>
-          <label>
-            Body fat %
-            <input type="number" min="0" max="80" step="0.1" inputMode="decimal" value={bodyForm.bodyFat} placeholder="18" onChange={(event) => setBodyForm({ ...bodyForm, bodyFat: event.target.value })} />
-          </label>
-        </div>
-        <button className="primary" disabled={saving}><Scale size={18} />Save Today's Log</button>
-      </form>
+      <FocusStage className="body-focus">
+        <form className="form body-entry" onSubmit={saveBody}>
+          <div>
+            <span className="stage-label">Daily check-in</span>
+            <h2>Log weight</h2>
+          </div>
+          <div className="two-fields">
+            <label>
+              Weight kg
+              <input type="number" min="0" step="0.1" inputMode="decimal" value={bodyForm.weight} placeholder="75.2" onChange={(event) => setBodyForm({ ...bodyForm, weight: event.target.value })} />
+            </label>
+            <label>
+              Body fat %
+              <input type="number" min="0" max="80" step="0.1" inputMode="decimal" value={bodyForm.bodyFat} placeholder="18" onChange={(event) => setBodyForm({ ...bodyForm, bodyFat: event.target.value })} />
+            </label>
+          </div>
+          <button className="primary primary-accent" disabled={saving}><Scale size={18} />Save Today's Log</button>
+        </form>
+      </FocusStage>
 
       <section className="panel-section">
         <h2>History</h2>
