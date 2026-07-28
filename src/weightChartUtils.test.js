@@ -13,6 +13,8 @@ test("filters to the requested range and sorts points chronologically", () => {
   const model = buildWeightChartModel(logs, 30, new Date("2026-07-27T12:00:00"));
 
   assert.deepEqual(model.points.map((point) => point.id), ["a", "b", "c"]);
+  assert.equal(model.points[0].log_date, "2026-07-25");
+  assert.equal(Number(model.points[0].weight).toFixed(1), "79.1");
   assert.equal(model.labelIndexes[0], 0);
   assert.equal(model.labelIndexes.at(-1), 2);
 });

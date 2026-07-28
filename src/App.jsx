@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Activity, BarChart3, Bolt, CalendarDays, CalendarRange, ChevronLeft, ChevronRight, Download, Dumbbell, Moon, Plus, RefreshCw, Scale, Sun, Trash2 } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "./supabaseClient";
+import { buildWeightChartModel } from "./weightChartUtils";
 
 const DEFAULT_WORKOUT_TYPES = ["Push", "Pull", "Legs", "Cardio", "Sports", "Mobility"];
 const DEFAULT_EXERCISES = {
@@ -592,32 +593,52 @@ function Tracker() {
 
 function Dashboard({ workoutSets, todayWorkout, todayPrs, latestBody, weekDays, monthDays, bodyLogs, range, setRange, recentPrs, todaySteps }) {
   const didWorkoutToday = hasWorkoutActivity(todayWorkout);
+  const chartModel = useMemo(() => buildWeightChartModel(bodyLogs, range), [bodyLogs, range]);
+  const firstVisibleWeight = chartModel.points[0] ? Number(chartModel.points[0].weight) : null;
+  const latestVisibleWeight = chartModel.points.at(-1) ? Number(chartModel.points.at(-1).weight) : null;
+  const visibleWeightChange = firstVisibleWeight === null || latestVisibleWeight === null
+    ? null
+    : latestVisibleWeight - firstVisibleWeight;
+  const visibleWeightChangeLabel = visibleWeightChange === null
+    ? "--"
+    : `${visibleWeightChange > 0 ? "+" : ""}${visibleWeightChange.toFixed(1)} kg`;
 
   return (
-    <>
-      <section className="stat-grid dashboard-primary">
-        <Stat label="Latest Weight" value={latestBody ? `${Number(latestBody.weight).toFixed(1)} kg` : "-- kg"} detail={latestBody ? `${formatDate(latestBody.log_date)}${latestBody.body_fat ? ` - ${latestBody.body_fat}% body fat` : ""}` : "No weigh-in yet"} />
-      </section>
-
-      <section className="panel-section trend-panel">
-        <div className="section-head">
-          <h2>Weight Trend</h2>
-          <div className="segmented">
-            {[30, 60, 90].map((days) => <button key={days} className={range === days ? "active" : ""} onClick={() => setRange(days)}>{days}D</button>)}
+    <div className="dashboard-layout">
+      <FocusStage className="dashboard-focus">
+        <div className="focus-stage-head">
+          <div>
+            <span className="stage-label">Latest weight</span>
+            <strong className="stage-value data-value">
+              {latestBody ? Number(latestBody.weight).toFixed(1) : "--"}
+              <small> kg</small>
+            </strong>
+            <p>{latestBody ? formatDate(latestBody.log_date) : "No weigh-in yet"}</p>
+          </div>
+          <div className="segmented segmented-dark" aria-label="Weight range">
+            {[30, 60, 90].map((days) => (
+              <button
+                key={days}
+                className={range === days ? "active" : ""}
+                onClick={() => setRange(days)}
+              >
+                {days}D
+              </button>
+            ))}
           </div>
         </div>
         <WeightChart logs={bodyLogs} range={range} />
-        <div className="trend-meta">
+        <div className="trend-meta trend-meta-dark">
           <div>
-            <span>Max Weight</span>
-            <strong>{bodyLogs.length ? `${Math.max(...bodyLogs.map((entry) => Number(entry.weight))).toFixed(1)} kg` : "-- kg"}</strong>
+            <span>Change</span>
+            <strong className="data-value">{visibleWeightChangeLabel}</strong>
           </div>
           <div>
-            <span>Latest</span>
-            <strong>{latestBody ? `${Number(latestBody.weight).toFixed(1)} kg` : "-- kg"}</strong>
+            <span>Body fat</span>
+            <strong className="data-value">{latestBody?.body_fat ? `${latestBody.body_fat}%` : "--"}</strong>
           </div>
         </div>
-      </section>
+      </FocusStage>
 
       <div className="dashboard-after-grid">
         <section className="stat-grid dashboard-support-stats">
@@ -644,7 +665,7 @@ function Dashboard({ workoutSets, todayWorkout, todayPrs, latestBody, weekDays, 
           </div>
         </section>
       </div>
-    </>
+    </div>
   );
 }
 
@@ -1086,58 +1107,67 @@ function BodyView({ bodyForm, setBodyForm, saveBody, bodyLogs, saving }) {
 }
 
 function WeightChart({ logs, range }) {
-  const cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - range + 1);
-  const points = logs
-    .filter((entry) => entry.log_date >= dateKey(cutoff))
-    .slice()
-    .sort((a, b) => a.log_date.localeCompare(b.log_date));
+  const [selectedPointId, setSelectedPointId] = useState(null);
+  const model = useMemo(() => buildWeightChartModel(logs, range), [logs, range]);
+  const selectedPoint = model.points.find((point) => point.id === selectedPointId);
 
-  if (points.length < 2) {
+  useEffect(() => {
+    setSelectedPointId(null);
+  }, [range]);
+
+  if (model.points.length < 2) {
     return (
       <div className="chart empty-chart" role="img" aria-label="Weight trend chart">
-        <span>Not enough weigh-ins yet</span>
+        <span>Log at least two weights to see your trend</span>
       </div>
     );
   }
 
-  const weights = points.map((point) => Number(point.weight));
-  const min = Math.min(...weights) - 0.5;
-  const max = Math.max(...weights) + 0.5;
-  const mid = (min + max) / 2;
-  const xFor = (index) => (index / (points.length - 1)) * 100;
-  const yFor = (value) => 88 - ((value - min) / (max - min || 1)) * 72;
-  const svgPoints = points.map((point, index) => `${xFor(index).toFixed(2)},${yFor(Number(point.weight)).toFixed(2)}`).join(" ");
-  const areaPoints = `0,100 ${svgPoints} 100,100`;
-  const lastPoint = points[points.length - 1];
-  const labelIndexes = [...new Set([
-    0,
-    Math.floor((points.length - 1) * 0.25),
-    Math.floor((points.length - 1) * 0.5),
-    Math.floor((points.length - 1) * 0.75),
-    points.length - 1
-  ])];
-
   return (
-    <div className="chart graph-chart" role="img" aria-label={`Weight trend from ${formatDate(points[0].log_date)} to ${formatDate(lastPoint.log_date)}`}>
+    <div
+      className="chart graph-chart"
+      role="group"
+      aria-label={`Weight trend from ${formatDate(model.points[0].log_date)} to ${formatDate(model.points.at(-1).log_date)}`}
+    >
       <div className="chart-y-axis" aria-hidden="true">
-        <span>{max.toFixed(1)} kg</span>
-        <span>{mid.toFixed(1)} kg</span>
-        <span>{min.toFixed(1)} kg</span>
+        <span>{model.max.toFixed(1)} kg</span>
+        <span>{model.mid.toFixed(1)} kg</span>
+        <span>{model.min.toFixed(1)} kg</span>
       </div>
-      <div className="chart-plot" aria-hidden="true">
-        <svg className="chart-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
-          <polygon className="chart-area" points={areaPoints} />
-          <polyline className="chart-line" points={svgPoints} />
+      <div className="chart-plot">
+        <svg className="chart-svg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+          {[16, 52, 88].map((y) => (
+            <line key={y} className="chart-gridline" x1="0" y1={y} x2="100" y2={y} />
+          ))}
+          <polygon className="chart-area" points={model.areaPoints} />
+          <polyline className="chart-line" points={model.svgPoints} />
         </svg>
-        <span
-          className="chart-point"
-          style={{ left: `${xFor(points.length - 1)}%`, top: `${yFor(Number(lastPoint.weight))}%` }}
-        />
+        {model.points.map((point) => (
+          <button
+            type="button"
+            key={point.id}
+            className={`chart-hit ${selectedPointId === point.id ? "selected" : ""}`}
+            style={{ left: `${point.x}%`, top: `${point.y}%` }}
+            aria-label={`${formatDate(point.log_date)}, ${Number(point.weight).toFixed(1)} kilograms`}
+            onClick={() => setSelectedPointId(point.id)}
+            onFocus={() => setSelectedPointId(point.id)}
+          />
+        ))}
+        {selectedPoint ? (
+          <output
+            className="chart-tooltip"
+            style={{
+              left: `${Math.min(88, Math.max(12, selectedPoint.x))}%`,
+              top: `${Math.max(8, selectedPoint.y - 10)}%`
+            }}
+          >
+            {formatDate(selectedPoint.log_date)} · {Number(selectedPoint.weight).toFixed(1)} kg
+          </output>
+        ) : null}
       </div>
       <div className="chart-x-axis" aria-hidden="true">
-        {labelIndexes.map((index) => (
-          <span key={`${points[index].log_date}-${index}`}>{formatDate(points[index].log_date)}</span>
+        {model.labelIndexes.map((index) => (
+          <span key={model.points[index].id}>{formatDate(model.points[index].log_date)}</span>
         ))}
       </div>
     </div>
