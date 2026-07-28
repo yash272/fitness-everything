@@ -548,6 +548,22 @@ input[type="number"] {
   overflow-y: auto;
 }
 
+.pr-list {
+  gap: 0;
+}
+
+.pr-list .row {
+  border: 0;
+  border-bottom: 1px solid var(--line-soft);
+  border-radius: 0;
+  padding-inline: 0;
+  background: transparent;
+}
+
+.pr-list .row:last-child {
+  border-bottom: 0;
+}
+
 /* ---------- Segmented controls ---------- */
 
 .segmented {
@@ -791,7 +807,7 @@ select:focus {
   position: absolute;
   z-index: 4;
   width: max-content;
-  max-width: 150px;
+  max-width: min(150px, 100%);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 6px;
   padding: 7px 9px;

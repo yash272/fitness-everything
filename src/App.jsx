@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Activity, BarChart3, Bolt, CalendarDays, CalendarRange, ChevronLeft, ChevronRight, Download, Dumbbell, Moon, Plus, RefreshCw, Scale, Sun, Trash2 } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "./supabaseClient";
 import { buildWeightChartModel } from "./weightChartUtils";
@@ -652,7 +652,7 @@ function Dashboard({ workoutSets, todayWorkout, todayPrs, latestBody, weekDays, 
           <div className="section-head">
             <h2>Recent PRs</h2>
           </div>
-          <div className="list">
+          <div className="list pr-list">
             {recentPrs.length ? recentPrs.map((pr) => (
               <div className="row" key={pr.id}>
                 <div>
@@ -1108,12 +1108,49 @@ function BodyView({ bodyForm, setBodyForm, saveBody, bodyLogs, saving }) {
 
 function WeightChart({ logs, range }) {
   const [selectedPointId, setSelectedPointId] = useState(null);
+  const [tooltipPosition, setTooltipPosition] = useState(null);
+  const plotRef = useRef(null);
+  const tooltipRef = useRef(null);
   const model = useMemo(() => buildWeightChartModel(logs, range), [logs, range]);
   const selectedPoint = model.points.find((point) => point.id === selectedPointId);
 
   useEffect(() => {
     setSelectedPointId(null);
   }, [range]);
+
+  useLayoutEffect(() => {
+    const plot = plotRef.current;
+    const tooltip = tooltipRef.current;
+    if (!selectedPoint || !plot || !tooltip) return undefined;
+
+    const positionTooltip = () => {
+      const plotRect = plot.getBoundingClientRect();
+      const tooltipRect = tooltip.getBoundingClientRect();
+      const anchorX = (selectedPoint.x / 100) * plotRect.width;
+      const anchorY = (selectedPoint.y / 100) * plotRect.height;
+      const halfTooltipWidth = tooltipRect.width / 2;
+      const gap = 8;
+      const edgeInset = 1;
+
+      setTooltipPosition({
+        id: selectedPoint.id,
+        left: Math.min(
+          plotRect.width - halfTooltipWidth - edgeInset,
+          Math.max(halfTooltipWidth + edgeInset, anchorX)
+        ),
+        top: Math.min(
+          plotRect.height - edgeInset,
+          Math.max(tooltipRect.height + edgeInset, anchorY - gap)
+        )
+      });
+    };
+
+    positionTooltip();
+    const resizeObserver = new ResizeObserver(positionTooltip);
+    resizeObserver.observe(plot);
+    resizeObserver.observe(tooltip);
+    return () => resizeObserver.disconnect();
+  }, [selectedPoint]);
 
   if (model.points.length < 2) {
     return (
@@ -1134,7 +1171,7 @@ function WeightChart({ logs, range }) {
         <span>{model.mid.toFixed(1)} kg</span>
         <span>{model.min.toFixed(1)} kg</span>
       </div>
-      <div className="chart-plot">
+      <div className="chart-plot" ref={plotRef}>
         <svg className="chart-svg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
           {[16, 52, 88].map((y) => (
             <line key={y} className="chart-gridline" x1="0" y1={y} x2="100" y2={y} />
@@ -1156,9 +1193,11 @@ function WeightChart({ logs, range }) {
         {selectedPoint ? (
           <output
             className="chart-tooltip"
+            ref={tooltipRef}
             style={{
-              left: `${Math.min(88, Math.max(12, selectedPoint.x))}%`,
-              top: `${Math.max(8, selectedPoint.y - 10)}%`
+              left: tooltipPosition?.id === selectedPoint.id ? tooltipPosition.left : 0,
+              top: tooltipPosition?.id === selectedPoint.id ? tooltipPosition.top : 0,
+              visibility: tooltipPosition?.id === selectedPoint.id ? "visible" : "hidden"
             }}
           >
             {formatDate(selectedPoint.log_date)} · {Number(selectedPoint.weight).toFixed(1)} kg
