@@ -422,13 +422,13 @@ function Tracker() {
     { id: "dashboard", label: "Dashboard", icon: BarChart3 },
     { id: "daily", label: "Logs", icon: CalendarDays },
     { id: "workout", label: "Workout", icon: Dumbbell },
-    { id: "body", label: "Progress", icon: Scale }
+    { id: "body", label: "Body", icon: Scale }
   ];
   const viewTitles = {
     dashboard: "Dashboard",
     daily: "Logs",
     workout: "Workout",
-    body: "Progress"
+    body: "Body"
   };
   const activeTitle = viewTitles[activeView] || viewTitles.dashboard;
   const dateChipDate = activeView === "workout" ? workoutDate : todayKey();
@@ -438,17 +438,18 @@ function Tracker() {
     <div className="app-shell">
       <header className="topbar">
         <div className="brand">
-          <span className="brand-mark"><Bolt size={23} strokeWidth={2.8} /></span>
-          <span>
-            <strong>fitness</strong>
-            <small>Training Log</small>
-          </span>
+          <span className="brand-mark"><Bolt size={18} strokeWidth={2.4} /></span>
+          <strong>fitness</strong>
         </div>
         <nav className="desktop-tabs" aria-label="Primary">
           {navItems.map((item) => {
             const Icon = item.icon;
             return (
-              <button key={item.id} className={activeView === item.id ? "active" : ""} onClick={() => changeView(item.id)}>
+              <button
+                key={item.id}
+                className={`${activeView === item.id ? "active" : ""} ${item.id === "workout" ? "workout-tab" : ""}`.trim()}
+                onClick={() => changeView(item.id)}
+              >
                 <Icon size={17} />
                 {item.label}
               </button>
@@ -471,7 +472,7 @@ function Tracker() {
         </div>
       </header>
 
-      <main className="app">
+      <main className={`app view-frame view-${activeView}`} key={activeView}>
         <section className="hero-row">
           <h1>{activeTitle}</h1>
           {activeView === "workout" ? (
@@ -574,7 +575,11 @@ function Tracker() {
         {navItems.map((item) => {
           const Icon = item.icon;
           return (
-            <button key={item.id} className={activeView === item.id ? "active" : ""} onClick={() => changeView(item.id)}>
+            <button
+              key={item.id}
+              className={`${activeView === item.id ? "active" : ""} ${item.id === "workout" ? "workout-tab" : ""}`.trim()}
+              onClick={() => changeView(item.id)}
+            >
               <Icon size={21} />
               <span>{item.label}</span>
             </button>
@@ -1163,6 +1168,10 @@ function Stat({ label, value, detail }) {
 
 function Empty({ text }) {
   return <div className="empty">{text}</div>;
+}
+
+function FocusStage({ className = "", children }) {
+  return <section className={`focus-stage ${className}`.trim()}>{children}</section>;
 }
 
 function Shell({ message, compact = false }) {
