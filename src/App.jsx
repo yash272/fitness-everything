@@ -5,7 +5,7 @@ import { buildSuggestedPlanForSplit, canonicalSplit, restoreSuggestedPlanForSpli
 import { addSetToPlan, removeSetFromPlan, removeSetFromWorkouts } from "./workoutMutations";
 import { isSupabaseConfigured, supabase } from "./supabaseClient";
 import { buildWeightChartModel } from "./weightChartUtils";
-import { hasWorkoutActivity, workoutStatusLabel, workoutTypeForEdit, workoutTypeLabel } from "./workoutDisplayUtils";
+import { hasWorkoutActivity, toggleWorkoutType, workoutActivityFlag, workoutStageLabel, workoutStatusLabel, workoutTypeForEdit, workoutTypeLabel } from "./workoutDisplayUtils";
 
 const DEFAULT_WORKOUT_TYPES = ["Push", "Pull", "Legs", "Cardio", "Sports", "Mobility"];
 const DEFAULT_EXERCISES = {
@@ -442,7 +442,10 @@ function Tracker() {
 
   async function changeSplit(split) {
     try {
-      await ensureWorkoutForDate(workoutDate, split, { did_workout: true });
+      const nextSplit = workoutTypeLabel(split);
+      await ensureWorkoutForDate(workoutDate, nextSplit, {
+        did_workout: workoutActivityFlag(nextSplit, selectedWorkout)
+      });
     } catch (error) {
       setNotice(error.message);
     }
@@ -538,7 +541,7 @@ function Tracker() {
             return (
               <button
                 key={item.id}
-                className={`${activeView === item.id ? "active" : ""} ${item.id === "workout" ? "workout-tab" : ""}`.trim()}
+                className={activeView === item.id ? "active" : ""}
                 onClick={() => changeView(item.id)}
               >
                 <Icon size={17} />
@@ -686,7 +689,7 @@ function Tracker() {
           return (
             <button
               key={item.id}
-              className={`${activeView === item.id ? "active" : ""} ${item.id === "workout" ? "workout-tab" : ""}`.trim()}
+              className={activeView === item.id ? "active" : ""}
               onClick={() => changeView(item.id)}
             >
               <Icon size={21} />
@@ -1168,7 +1171,7 @@ function WorkoutView({ selectedDate, selectedSplit, changeSplit, exerciseForm, s
       <FocusStage className="workout-focus form">
         <div className="daily-control-head">
           <div>
-            <span className="stage-label">{selectedDate === todayKey() ? "Active session" : formatLongDate(selectedDate)}</span>
+            <span className="stage-label">{selectedDate === todayKey() ? workoutStageLabel(selectedSplit, selectedWorkout) : formatLongDate(selectedDate)}</span>
             <h2 className="workout-title">{selectedSplit ? workoutTypeLabel(selectedSplit) : "Set workout type"}</h2>
           </div>
           {!isEditingType ? (
@@ -1176,11 +1179,20 @@ function WorkoutView({ selectedDate, selectedSplit, changeSplit, exerciseForm, s
           ) : null}
         </div>
         <div className="quick-split-buttons" aria-label="Quick workout templates">
-          {["Push", "Pull", "Legs"].map((type) => (
-            <button key={type} type="button" className={selectedSplit?.toLowerCase() === type.toLowerCase() ? "active" : ""} onClick={() => changeSplit(type)}>
-              {type}
-            </button>
-          ))}
+          {["Push", "Pull", "Legs"].map((type) => {
+            const isActive = selectedSplit?.toLowerCase() === type.toLowerCase();
+            return (
+              <button
+                key={type}
+                type="button"
+                className={isActive ? "active" : ""}
+                aria-pressed={isActive}
+                onClick={() => changeSplit(toggleWorkoutType(selectedSplit, type))}
+              >
+                {type}
+              </button>
+            );
+          })}
         </div>
 
         {isEditingType ? (

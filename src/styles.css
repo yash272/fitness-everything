@@ -1702,16 +1702,6 @@ select:focus {
   color: var(--accent-text);
 }
 
-.mobile-tabs button.workout-tab {
-  color: color-mix(in srgb, var(--text) 72%, transparent);
-}
-
-.mobile-tabs button.workout-tab.active,
-.desktop-tabs button.workout-tab.active {
-  background: var(--accent);
-  color: var(--accent-ink);
-}
-
 /* ---------- Shell / setup ---------- */
 
 .auth,
