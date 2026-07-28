@@ -99,6 +99,10 @@ assert.equal(formatSuggestedPrescription({
   ]
 }), "45x7 / 45x8");
 
+assert.equal(formatSuggestedPrescription({
+  sets: [{ weight: "", reps: "10" }]
+}), "Set target");
+
 const pushPlan = buildSuggestedPlanForSplit("Push");
 assert.equal(pushPlan.title, "Suggested Push Day");
 assert.deepEqual(pushPlan.exercises.map((exercise) => exercise.name), [

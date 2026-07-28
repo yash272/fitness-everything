@@ -151,6 +151,9 @@ export function buildProgressivePlanForSplit({ split, selectedDate, workouts = [
 export function formatSuggestedPrescription(exercise) {
   const sets = exercise?.sets || [];
   if (!sets.length) return "No target";
+  if (sets.some((set) => set.weight === "" || set.weight === null || set.weight === undefined || !set.reps)) {
+    return "Set target";
+  }
   const first = sets[0];
   const identical = sets.every(
     (set) => String(set.weight) === String(first.weight) && String(set.reps) === String(first.reps)
