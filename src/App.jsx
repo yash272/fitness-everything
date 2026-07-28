@@ -779,7 +779,7 @@ function DayWorkoutDetails({ workout, bodyLog }) {
   if (!workout) {
     return (
       <div className="day-summary rest">
-        <strong>Body log</strong>
+        <strong>Rest day</strong>
         <span>{bodyLog ? `${Number(bodyLog.weight).toFixed(1)} kg${bodyLog.body_fat ? ` - ${bodyLog.body_fat}% body fat` : ""}` : "No workout logged"}</span>
       </div>
     );

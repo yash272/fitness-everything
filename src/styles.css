@@ -1200,6 +1200,16 @@ select:focus {
   color: var(--focus-text);
 }
 
+.log-focus .day-summary span,
+.log-focus .empty {
+  color: var(--focus-muted);
+}
+
+.body-focus input::placeholder {
+  color: var(--focus-muted);
+  opacity: 1;
+}
+
 /* ---------- Calendar ---------- */
 
 .calendar-actions {
