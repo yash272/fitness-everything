@@ -41,6 +41,127 @@ export function buildSuggestedPlanForSplit(split) {
   return structuredClone(template);
 }
 
+export function estimateSetStrength(set) {
+  const weight = Number(set?.weight);
+  const reps = Number(set?.reps);
+  if (!Number.isFinite(weight) || weight <= 0 || !Number.isFinite(reps) || reps <= 0) return null;
+  return weight * (1 + reps / 30);
+}
+
+export function progressBestSet(set) {
+  const weight = Number(set.weight);
+  const reps = Number(set.reps);
+  if (reps >= 12) {
+    return {
+      reps: "7",
+      weight: String(weight + 5),
+      duration: "",
+      kind: "weight",
+      label: "+5 lb"
+    };
+  }
+  return {
+    reps: String(Math.min(12, reps + 2)),
+    weight: String(weight),
+    duration: "",
+    kind: "reps",
+    label: "+2 reps"
+  };
+}
+
+function compareWeightedSets(a, b) {
+  const strengthDelta = estimateSetStrength(b) - estimateSetStrength(a);
+  if (Math.abs(strengthDelta) > 1e-9) return strengthDelta;
+  const weightDelta = Number(b.weight) - Number(a.weight);
+  if (weightDelta) return weightDelta;
+  return Number(b.reps) - Number(a.reps);
+}
+
+function normalizeExerciseName(name) {
+  return String(name || "").trim().toLowerCase();
+}
+
+function validWeightedSets(exercise) {
+  return (exercise?.exercise_sets || [])
+    .filter((set) => estimateSetStrength(set) !== null)
+    .slice()
+    .sort(compareWeightedSets);
+}
+
+function findLatestExerciseHistory({ exerciseName, split, selectedDate, workouts }) {
+  return workouts
+    .filter((workout) => workout.workout_date < selectedDate && canonicalSplit(workout.split) === split)
+    .slice()
+    .sort((a, b) => b.workout_date.localeCompare(a.workout_date))
+    .map((workout) => ({
+      sourceDate: workout.workout_date,
+      exercise: (workout.exercises || []).find(
+        (candidate) => normalizeExerciseName(candidate.name) === normalizeExerciseName(exerciseName)
+      )
+    }))
+    .find((entry) => validWeightedSets(entry.exercise).length);
+}
+
+export function buildProgressivePlanForSplit({ split, selectedDate, workouts = [] }) {
+  const category = canonicalSplit(split);
+  const plan = buildSuggestedPlanForSplit(category);
+  if (!plan) return null;
+
+  plan.exercises = plan.exercises.map((exercise) => {
+    const history = findLatestExerciseHistory({
+      exerciseName: exercise.name,
+      split: category,
+      selectedDate,
+      workouts
+    });
+    if (!history) {
+      return {
+        ...exercise,
+        progression: {
+          sourceDate: null,
+          previousSet: null,
+          kind: "baseline",
+          label: "Baseline"
+        }
+      };
+    }
+
+    const bestSet = validWeightedSets(history.exercise)[0];
+    const next = progressBestSet(bestSet);
+    const target = { reps: next.reps, weight: next.weight, duration: "" };
+    return {
+      ...exercise,
+      sets: [structuredClone(target), structuredClone(target), structuredClone(target)],
+      progression: {
+        sourceDate: history.sourceDate,
+        previousSet: { reps: Number(bestSet.reps), weight: Number(bestSet.weight) },
+        kind: next.kind,
+        label: next.label
+      }
+    };
+  });
+
+  const sourceDates = plan.exercises
+    .map((exercise) => exercise.progression.sourceDate)
+    .filter(Boolean)
+    .sort();
+  return { ...plan, sourceDate: sourceDates.at(-1) || null };
+}
+
+export function formatSuggestedPrescription(exercise) {
+  const sets = exercise?.sets || [];
+  if (!sets.length) return "No target";
+  if (sets.some((set) => set.weight === "" || set.weight === null || set.weight === undefined || !set.reps)) {
+    return "Set target";
+  }
+  const first = sets[0];
+  const identical = sets.every(
+    (set) => String(set.weight) === String(first.weight) && String(set.reps) === String(first.reps)
+  );
+  if (identical) return `${sets.length} x ${first.weight} lb x ${first.reps}`;
+  return sets.map((set) => `${set.weight}x${set.reps}`).join(" / ");
+}
+
 export function restoreSuggestedPlanForSplit(split) {
   return buildSuggestedPlanForSplit(split);
 }
@@ -52,7 +173,7 @@ export function shouldShowSuggestedPlan({ plan, hiddenSplits }) {
 }
 
 export function suggestedPlanDraftStorageKey(date, split) {
-  return `fitness-suggested-plan-draft:${date}:${canonicalSplit(split) || "none"}`;
+  return `fitness-suggested-plan-draft-v2:${date}:${canonicalSplit(split) || "none"}`;
 }
 
 export function suggestedPlanHiddenStorageKey(date) {

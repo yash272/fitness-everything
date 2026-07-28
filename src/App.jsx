@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Activity, BarChart3, Bolt, CalendarDays, CalendarRange, ChevronLeft, ChevronRight, Download, Dumbbell, Moon, Plus, RefreshCw, Scale, Sun, Trash2 } from "lucide-react";
 import { buildFitnessExport, exportFilename } from "./exportData";
-import { buildSuggestedPlanForSplit, canonicalSplit, restoreSuggestedPlanForSplit, shouldShowSuggestedPlan, suggestedPlanDraftStorageKey, suggestedPlanHiddenStorageKey } from "./workoutPlan";
+import SuggestedWorkoutPlan from "./SuggestedWorkoutPlan";
+import { buildProgressivePlanForSplit, canonicalSplit, shouldShowSuggestedPlan, suggestedPlanDraftStorageKey, suggestedPlanHiddenStorageKey } from "./workoutPlan";
 import { addSetToPlan, removeSetFromPlan, removeSetFromWorkouts } from "./workoutMutations";
 import { isSupabaseConfigured, supabase } from "./supabaseClient";
 import { buildWeightChartModel } from "./weightChartUtils";
@@ -651,6 +652,7 @@ function Tracker() {
           <WorkoutView
             selectedDate={workoutDate}
             selectedSplit={workoutTypeForEdit(selectedWorkout)}
+            workouts={workouts}
             changeSplit={changeSplit}
             exerciseForm={exerciseForm}
             setExerciseForm={setExerciseForm}
@@ -962,8 +964,12 @@ function CalendarGrid({ month, workouts, bodyLogs, selectedDate, setSelectedDate
   );
 }
 
-function loadSuggestedPlanDraft(selectedDate, selectedSplit) {
-  const fallback = buildSuggestedPlanForSplit(selectedSplit);
+function loadSuggestedPlanDraft(selectedDate, selectedSplit, workouts) {
+  const fallback = buildProgressivePlanForSplit({
+    split: selectedSplit,
+    selectedDate,
+    workouts
+  });
   try {
     const stored = localStorage.getItem(suggestedPlanDraftStorageKey(selectedDate, selectedSplit));
     return stored ? JSON.parse(stored) : fallback;
@@ -1002,13 +1008,14 @@ function saveHiddenSplits(selectedDate, hiddenSplits) {
   }
 }
 
-function WorkoutView({ selectedDate, selectedSplit, changeSplit, exerciseForm, setExerciseForm, isAddingExercise, setIsAddingExercise, addExercise, exerciseNames, workoutTypes, selectedWorkout, saveDailyLog, bestBefore, repeatSet, deleteSet, deleteExercise, acceptSuggestedPlan, saving }) {
+function WorkoutView({ selectedDate, selectedSplit, workouts, changeSplit, exerciseForm, setExerciseForm, isAddingExercise, setIsAddingExercise, addExercise, exerciseNames, workoutTypes, selectedWorkout, saveDailyLog, bestBefore, repeatSet, deleteSet, deleteExercise, acceptSuggestedPlan, saving }) {
   const [isEditingType, setIsEditingType] = useState(false);
   const [isEditingSteps, setIsEditingSteps] = useState(false);
   const [typeDraft, setTypeDraft] = useState(selectedSplit);
   const [stepsDraft, setStepsDraft] = useState(selectedWorkout?.steps ?? "");
-  const [planDraft, setPlanDraft] = useState(() => loadSuggestedPlanDraft(selectedDate, selectedSplit));
+  const [planDraft, setPlanDraft] = useState(() => loadSuggestedPlanDraft(selectedDate, selectedSplit, workouts));
   const [hiddenSplits, setHiddenSplits] = useState(() => loadHiddenSplits(selectedDate));
+  const workoutsRef = useRef(workouts);
   const planDraftStorageKeyRef = useRef(suggestedPlanDraftStorageKey(selectedDate, selectedSplit));
   const hiddenSplitsStorageKeyRef = useRef(suggestedPlanHiddenStorageKey(selectedDate));
   const existingExerciseNames = useMemo(() => new Set((selectedWorkout?.exercises || []).map((exercise) => exercise.name.toLowerCase())), [selectedWorkout?.exercises]);
@@ -1029,8 +1036,12 @@ function WorkoutView({ selectedDate, selectedSplit, changeSplit, exerciseForm, s
   }, [selectedDate, selectedWorkout?.steps]);
 
   useEffect(() => {
+    workoutsRef.current = workouts;
+  }, [workouts]);
+
+  useEffect(() => {
     planDraftStorageKeyRef.current = suggestedPlanDraftStorageKey(selectedDate, selectedSplit);
-    setPlanDraft(loadSuggestedPlanDraft(selectedDate, selectedSplit));
+    setPlanDraft(loadSuggestedPlanDraft(selectedDate, selectedSplit, workoutsRef.current));
   }, [selectedSplit, selectedDate]);
 
   useEffect(() => {
@@ -1135,11 +1146,15 @@ function WorkoutView({ selectedDate, selectedSplit, changeSplit, exerciseForm, s
     });
   }
 
-  function showOriginalPlan() {
+  function resetSuggestions() {
     const split = canonicalSplit(selectedSplit);
-    const originalPlan = restoreSuggestedPlanForSplit(split);
-    if (!split || !originalPlan) return;
-    setPlanDraft(originalPlan);
+    const resetPlan = buildProgressivePlanForSplit({
+      split,
+      selectedDate,
+      workouts
+    });
+    if (!split || !resetPlan) return;
+    setPlanDraft(resetPlan);
     setHiddenSplits((current) => {
       const next = new Set(current);
       next.delete(split);
@@ -1248,6 +1263,7 @@ function WorkoutView({ selectedDate, selectedSplit, changeSplit, exerciseForm, s
           plan={planDraft}
           existingExerciseNames={existingExerciseNames}
           exerciseNames={exerciseNames}
+          formatDate={formatDate}
           updateExercise={updatePlanExercise}
           updateSet={updatePlanSet}
           addSet={addPlanSet}
@@ -1256,27 +1272,24 @@ function WorkoutView({ selectedDate, selectedSplit, changeSplit, exerciseForm, s
           addExercise={addPlanExercise}
           acceptExercise={acceptPlanExercise}
           hidePlan={hidePlan}
-          showOriginalPlan={showOriginalPlan}
+          resetSuggestions={resetSuggestions}
           saving={saving}
         />
       ) : hasSuggestedPlan && isSuggestedPlanHidden ? (
-        <section className="panel-section suggested-plan-toggle">
+        <section className="suggested-plan-toggle">
           <div>
-            <h2>{planDraft.title}</h2>
-            <p>Plan hidden. Show it when you want to continue your checklist.</p>
+            <strong>{planDraft.title}</strong>
+            <span>Suggestions hidden</span>
           </div>
-          <div className="suggested-toggle-actions">
-            <button type="button" className="secondary" onClick={showOriginalPlan}>Reset Original Plan</button>
-            <button type="button" className="primary" onClick={showPlan}>Show Plan</button>
-          </div>
+          <button type="button" className="secondary mini" onClick={showPlan}>Show</button>
         </section>
       ) : canRestoreSuggestedPlan ? (
-        <section className="panel-section suggested-plan-toggle">
+        <section className="suggested-plan-toggle">
           <div>
-            <h2>Suggested {selectedCanonicalSplit} Day</h2>
-            <p>Plan is empty. Reset it to bring back skipped exercises.</p>
+            <strong>Suggested {selectedCanonicalSplit} Day</strong>
+            <span>No suggestions remaining</span>
           </div>
-          <button type="button" className="primary" onClick={showOriginalPlan}><RefreshCw size={17} />Reset Original Plan</button>
+          <button type="button" className="secondary mini" onClick={resetSuggestions}><RefreshCw size={14} />Reset</button>
         </section>
       ) : null}
 
@@ -1385,76 +1398,6 @@ function WorkoutView({ selectedDate, selectedSplit, changeSplit, exerciseForm, s
         </div>
       </section>
     </>
-  );
-}
-
-function SuggestedWorkoutPlan({ plan, existingExerciseNames, exerciseNames, updateExercise, updateSet, addSet, removeSet, removeExercise, addExercise, acceptExercise, hidePlan, showOriginalPlan, saving }) {
-  const canLogExercise = (exercise) => exercise.name.trim() && exercise.sets.some((set) => set.reps && set.weight !== "");
-
-  return (
-    <section className="panel-section suggested-plan">
-      <div className="daily-control-head suggested-plan-head">
-        <div>
-          <h2>{plan.title}</h2>
-          <p>{plan.description}</p>
-        </div>
-        <span className="badge">Log one by one</span>
-      </div>
-      <datalist id="suggested-exercise-options">
-        {exerciseNames.map((name) => <option key={name} value={name} />)}
-      </datalist>
-      <div className="suggested-plan-list">
-        {plan.exercises.map((exercise, exerciseIndex) => {
-          const alreadyLogged = existingExerciseNames.has(exercise.name.toLowerCase());
-          return (
-            <article className={`suggested-exercise ${alreadyLogged ? "already-logged" : ""}`} key={`${exercise.name || "new"}-${exerciseIndex}`}>
-              <div className="suggested-exercise-head">
-                <label>
-                  Exercise
-                  <input value={exercise.name} list="suggested-exercise-options" placeholder="Exercise name" onChange={(event) => updateExercise(exerciseIndex, { name: event.target.value })} />
-                </label>
-                <button type="button" className="danger icon-only" onClick={() => removeExercise(exerciseIndex)} disabled={plan.exercises.length === 1} aria-label={`Remove ${exercise.name || "exercise"}`} title={`Remove ${exercise.name || "exercise"}`}>
-                  <Trash2 size={16} />
-                </button>
-              </div>
-              <div className="target-set-grid">
-                {exercise.sets.map((set, setIndex) => (
-                  <div className="target-set-row" key={setIndex}>
-                    <span>{setIndex + 1}</span>
-                    <label>
-                      Reps
-                      <input type="number" min="1" inputMode="numeric" value={set.reps} onChange={(event) => updateSet(exerciseIndex, setIndex, "reps", event.target.value)} />
-                    </label>
-                    <label>
-                      Lbs
-                      <input type="number" min="0" step="2.5" inputMode="decimal" value={set.weight} onChange={(event) => updateSet(exerciseIndex, setIndex, "weight", event.target.value)} />
-                    </label>
-                    <button type="button" className="danger icon-only" onClick={() => removeSet(exerciseIndex, setIndex)} disabled={exercise.sets.length === 1} aria-label={`Remove target set ${setIndex + 1} from ${exercise.name || "exercise"}`} title={`Remove target set ${setIndex + 1}`}>
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-              <button type="button" className="secondary suggested-add-set" onClick={() => addSet(exerciseIndex)} disabled={saving}><Plus size={16} />Add Set</button>
-              {exercise.note || alreadyLogged ? (
-                <p className="suggested-note">
-                  {alreadyLogged ? "Already logged today. Logging this will add another copy unless you remove this suggestion. " : ""}{exercise.note}
-                </p>
-              ) : null}
-              <div className="suggested-exercise-actions">
-                <button type="button" className="primary" onClick={() => acceptExercise(exerciseIndex)} disabled={saving || !canLogExercise(exercise)}><Dumbbell size={17} />Log this exercise</button>
-                <button type="button" className="secondary" onClick={() => removeExercise(exerciseIndex)} disabled={saving}>Skip</button>
-              </div>
-            </article>
-          );
-        })}
-      </div>
-      <div className="suggested-plan-actions">
-        <button type="button" className="secondary" onClick={addExercise}><Plus size={17} />Add Exercise</button>
-        <button type="button" className="secondary" onClick={showOriginalPlan} disabled={saving}><RefreshCw size={17} />Reset Original Plan</button>
-        <button type="button" className="secondary" onClick={hidePlan} disabled={saving}>Hide Plan</button>
-      </div>
-    </section>
   );
 }
 

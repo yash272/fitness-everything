@@ -1245,34 +1245,213 @@ select:focus {
 
 
 /* ---------- Suggested workout plan ---------- */
-.suggested-plan {
+.panel-section.suggested-plan {
+  position: relative;
   display: grid;
-  gap: 12px;
-  border: 0;
+  gap: 0;
+  overflow: visible;
+  border-color: rgba(255, 255, 255, 0.07);
   padding: 0;
-  background: transparent;
+  background: var(--focus);
 }
 
-.suggested-plan-head {
+.suggestion-header {
+  display: flex;
   align-items: start;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 14px 13px;
 }
 
-.suggested-plan-list {
-  display: grid;
-  gap: 10px;
+.suggestion-header .stage-label {
+  color: var(--accent);
+  letter-spacing: 0.06em;
 }
 
-.suggested-exercise {
+.suggestion-header h2 {
+  margin-top: 3px;
+  color: var(--focus-text);
+  font-size: 1.08rem;
+}
+
+.suggestion-header p {
+  margin-top: 3px;
+  color: var(--focus-muted);
+  font-size: 0.7rem;
+  line-height: 1.35;
+}
+
+.suggestion-header-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 6px;
+}
+
+.suggestion-header .icon-button {
+  min-width: 40px;
+  height: 40px;
+  border-color: rgba(255, 255, 255, 0.13);
+  background: var(--focus-raised);
+  color: var(--focus-text);
+}
+
+.suggestion-menu-wrap {
+  position: relative;
+}
+
+.suggestion-menu {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 6px);
+  right: 0;
   display: grid;
-  gap: 10px;
-  border: 1px solid var(--line-soft);
+  width: 190px;
+  overflow: hidden;
+  border: 1px solid var(--line);
   border-radius: 7px;
-  padding: 11px;
+  padding: 4px;
   background: var(--surface);
+  box-shadow: var(--shadow-pop);
 }
 
-.suggested-exercise.already-logged {
-  border-color: var(--accent-line);
+.suggestion-menu button {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 40px;
+  border-radius: 5px;
+  padding: 0 10px;
+  background: transparent;
+  color: var(--text);
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-align: left;
+}
+
+.suggestion-ledger {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.suggestion-row {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.09);
+  box-shadow: inset 0 0 0 0 var(--accent);
+  transition: background-color 170ms ease, box-shadow 170ms ease;
+}
+
+.suggestion-row:last-child {
+  border-bottom: 0;
+}
+
+.suggestion-row.expanded {
+  background: var(--focus-raised);
+}
+
+.suggestion-row.already-logged {
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.suggestion-summary {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.35fr) minmax(150px, 1fr) auto 20px;
+  gap: 12px;
+  align-items: center;
+  width: 100%;
+  min-height: 58px;
+  padding: 9px 14px;
+  background: transparent;
+  color: var(--focus-text);
+  text-align: left;
+}
+
+.suggestion-summary:active {
+  transform: none;
+}
+
+.suggestion-name {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.suggestion-name strong {
+  overflow-wrap: anywhere;
+  color: var(--focus-text);
+  font-size: 0.83rem;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.suggestion-name small {
+  overflow: hidden;
+  color: var(--focus-muted);
+  font-size: 0.64rem;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.suggestion-prescription {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--focus-text);
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.76rem;
+  font-weight: 600;
+  line-height: 1.3;
+  font-variant-numeric: tabular-nums;
+}
+
+.progression-tag {
+  display: inline-flex;
+  place-items: center;
+  justify-content: center;
+  min-height: 24px;
+  border: 1px solid rgba(215, 255, 79, 0.24);
+  border-radius: 5px;
+  padding: 0 7px;
+  background: rgba(215, 255, 79, 0.1);
+  color: var(--accent);
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.62rem;
+  font-weight: 600;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.progression-tag.baseline {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--focus-muted);
+}
+
+.suggestion-chevron {
+  color: var(--focus-muted);
+  transition: transform 170ms ease;
+}
+
+.suggestion-row.expanded .suggestion-chevron {
+  transform: rotate(180deg);
+}
+
+.suggestion-editor {
+  display: grid;
+  gap: 10px;
+  border-top: 1px solid var(--line-soft);
+  padding: 12px 14px 14px;
+  background: var(--surface);
+  animation: suggestion-editor-enter 170ms ease-out;
+}
+
+@keyframes suggestion-editor-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .suggested-exercise-head {
@@ -1289,7 +1468,7 @@ select:focus {
 
 .target-set-row {
   display: grid;
-  grid-template-columns: auto 1fr 1fr auto;
+  grid-template-columns: 30px minmax(0, 1fr) minmax(0, 1fr) 40px;
   gap: 8px;
   align-items: end;
 }
@@ -1307,11 +1486,9 @@ select:focus {
   font-variant-numeric: tabular-nums;
 }
 
-
 .suggested-add-set {
   width: 100%;
   min-height: 34px;
-  margin-top: 8px;
 }
 
 .suggested-note {
@@ -1320,25 +1497,10 @@ select:focus {
   line-height: 1.45;
 }
 
-
 .suggested-exercise-actions {
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 8px;
-  margin-top: 10px;
-}
-
-@media (max-width: 540px) {
-  .suggested-exercise-actions {
-    grid-template-columns: 1fr;
-  }
-}
-
-.suggested-plan-actions {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 8px;
-  margin-top: 2px;
 }
 
 .suggested-plan-toggle {
@@ -1346,19 +1508,28 @@ select:focus {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  min-height: 54px;
+  margin-bottom: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 9px 11px 9px 14px;
+  background: var(--surface);
 }
 
-.suggested-plan-toggle p {
-  color: var(--muted);
+.suggested-plan-toggle div {
+  display: grid;
+  gap: 2px;
+}
+
+.suggested-plan-toggle strong {
+  color: var(--text);
   font-size: 0.82rem;
-  margin-top: 4px;
+  font-weight: 600;
 }
 
-.suggested-toggle-actions {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
+.suggested-plan-toggle span {
+  color: var(--muted);
+  font-size: 0.7rem;
 }
 
 /* ---------- Logs: day details ---------- */
@@ -1766,6 +1937,14 @@ select:focus {
   .row:hover {
     border-color: var(--line);
   }
+
+  .suggestion-summary:hover {
+    background: rgba(255, 255, 255, 0.035);
+  }
+
+  .suggestion-menu button:hover {
+    background: var(--surface-low);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1781,10 +1960,49 @@ select:focus {
 
 /* ---------- Small phones ---------- */
 
+@media (max-width: 620px) {
+  .suggestion-header {
+    padding: 12px;
+  }
+
+  .suggestion-summary {
+    grid-template-columns: minmax(0, 1fr) auto 18px;
+    grid-template-areas:
+      "name tag chevron"
+      "target target chevron";
+    gap: 4px 8px;
+    min-height: 62px;
+    padding: 8px 12px;
+  }
+
+  .suggestion-name {
+    grid-area: name;
+  }
+
+  .suggestion-prescription {
+    grid-area: target;
+  }
+
+  .progression-tag {
+    grid-area: tag;
+  }
+
+  .suggestion-chevron {
+    grid-area: chevron;
+  }
+
+  .suggestion-editor {
+    padding: 11px 12px 12px;
+  }
+
+  .target-set-row {
+    gap: 6px;
+  }
+}
+
 @media (max-width: 520px) {
   .two-fields,
-  .form-actions,
-  .suggested-plan-actions {
+  .form-actions {
     grid-template-columns: 1fr;
   }
 
