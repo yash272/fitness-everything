@@ -170,7 +170,7 @@ export function shouldShowSuggestedPlan({ plan, hiddenSplits }) {
 }
 
 export function suggestedPlanDraftStorageKey(date, split) {
-  return `fitness-suggested-plan-draft:${date}:${canonicalSplit(split) || "none"}`;
+  return `fitness-suggested-plan-draft-v2:${date}:${canonicalSplit(split) || "none"}`;
 }
 
 export function suggestedPlanHiddenStorageKey(date) {

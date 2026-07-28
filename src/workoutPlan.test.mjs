@@ -166,6 +166,6 @@ assert.equal(shouldShowSuggestedPlan({ plan: { ...pushPlan, exercises: [] }, sel
 assert.equal(shouldShowSuggestedPlan({ plan: null, selectedWorkout: { exercises: [] }, hiddenSplits: new Set() }), false);
 
 
-assert.equal(suggestedPlanDraftStorageKey("2026-07-21", "push"), "fitness-suggested-plan-draft:2026-07-21:Push");
-assert.equal(suggestedPlanDraftStorageKey("2026-07-21", "Sports"), "fitness-suggested-plan-draft:2026-07-21:none");
+assert.equal(suggestedPlanDraftStorageKey("2026-07-21", "push"), "fitness-suggested-plan-draft-v2:2026-07-21:Push");
+assert.equal(suggestedPlanDraftStorageKey("2026-07-21", "Sports"), "fitness-suggested-plan-draft-v2:2026-07-21:none");
 assert.equal(suggestedPlanHiddenStorageKey("2026-07-21"), "fitness-suggested-plan-hidden:2026-07-21");
