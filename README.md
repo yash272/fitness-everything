@@ -6,6 +6,7 @@ A mobile-first personal fitness tracker built with React, Supabase, and Vercel.
 
 - Synced workout data across devices
 - Custom workout type tracking
+- Dynamic Push, Pull, and Legs suggestions based on your strongest recent matching exercise set
 - Cardio day tracking
 - Daily gym/no-gym status
 - Daily steps
