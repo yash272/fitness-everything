@@ -30,7 +30,9 @@ assert.equal(monthExport.period.month, "2026-07");
 assert.equal(monthExport.period.start_date, "2026-07-01");
 assert.equal(monthExport.period.end_date, "2026-07-31");
 assert.equal(monthExport.days.length, 31);
-assert.equal(monthExport.days.find((day) => day.date === "2026-07-14").weight_kg, 67.4);
+const july14 = monthExport.days.find((day) => day.date === "2026-07-14");
+assert.equal(july14.weight_kg, 67.4);
+assert.equal(Object.hasOwn(july14, "body_fat_percent"), false);
 assert.equal(monthExport.days.find((day) => day.date === "2026-06-30"), undefined);
 assert.equal(exportFilename(monthExport), "fitness-everything-2026-07.json");
 

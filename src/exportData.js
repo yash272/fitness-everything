@@ -32,7 +32,6 @@ function exportDay({ date, workoutsByDate, bodyLogsByDate }) {
     date,
     steps: workout?.steps ?? null,
     weight_kg: bodyLog ? Number(bodyLog.weight) : null,
-    body_fat_percent: bodyLog?.body_fat == null ? null : Number(bodyLog.body_fat),
     gym: hasWorkoutActivity(workout),
     workout_type: workoutTypeForExport(workout) || null,
     workouts: (workout?.exercises || []).map((exercise) => ({

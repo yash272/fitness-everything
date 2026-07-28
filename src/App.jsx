@@ -58,7 +58,7 @@ function Tracker() {
   const [isWorkoutDatePickerOpen, setIsWorkoutDatePickerOpen] = useState(false);
   const [isAddingExercise, setIsAddingExercise] = useState(false);
   const [exerciseForm, setExerciseForm] = useState({ name: "", trackingType: "weighted", sets: [{ reps: "10", weight: "", duration: "" }] });
-  const [bodyForm, setBodyForm] = useState({ weight: "", bodyFat: "" });
+  const [bodyForm, setBodyForm] = useState({ weight: "" });
   const [notice, setNotice] = useState("");
   const [exportFile, setExportFile] = useState(null);
   const [isExportOptionsOpen, setIsExportOptionsOpen] = useState(false);
@@ -133,7 +133,7 @@ function Tracker() {
         .limit(120),
       supabase
         .from("body_logs")
-        .select("id,user_id,log_date,weight,body_fat")
+        .select("id,user_id,log_date,weight")
         .eq("user_id", userId)
         .order("log_date", { ascending: true })
         .limit(180)
@@ -415,7 +415,6 @@ function Tracker() {
   async function saveBody(event) {
     event.preventDefault();
     const weight = Number(bodyForm.weight);
-    const bodyFat = bodyForm.bodyFat === "" ? null : Number(bodyForm.bodyFat);
     if (!weight || Number.isNaN(weight)) return;
 
     setSaving(true);
@@ -426,16 +425,15 @@ function Tracker() {
         user_id: userId,
         log_date: todayKey(),
         weight,
-        body_fat: Number.isNaN(bodyFat) ? null : bodyFat,
         updated_at: new Date().toISOString()
       }, { onConflict: "user_id,log_date" })
-      .select("id,user_id,log_date,weight,body_fat")
+      .select("id,user_id,log_date,weight")
       .single();
 
     if (error) setNotice(error.message);
     else {
       setBodyLogs((items) => [...items.filter((item) => item.log_date !== data.log_date), data].sort((a, b) => a.log_date.localeCompare(b.log_date)));
-      setBodyForm({ weight: "", bodyFat: "" });
+      setBodyForm({ weight: "" });
     }
     setSaving(false);
   }
@@ -744,10 +742,6 @@ function Dashboard({ workoutSets, todayWorkout, todayPrs, latestBody, weekDays, 
             <span>Change</span>
             <strong className="data-value">{visibleWeightChangeLabel}</strong>
           </div>
-          <div>
-            <span>Body fat</span>
-            <strong className="data-value">{latestBody?.body_fat ? `${latestBody.body_fat}%` : "--"}</strong>
-          </div>
         </div>
       </FocusStage>
 
@@ -894,7 +888,7 @@ function DayWorkoutDetails({ workout, bodyLog }) {
     return (
       <div className="day-summary rest">
         <strong>Rest day</strong>
-        <span>{bodyLog ? `${Number(bodyLog.weight).toFixed(1)} kg${bodyLog.body_fat ? ` - ${bodyLog.body_fat}% body fat` : ""}` : "No workout logged"}</span>
+        <span>{bodyLog ? `${Number(bodyLog.weight).toFixed(1)} kg` : "No workout logged"}</span>
       </div>
     );
   }
@@ -1473,14 +1467,10 @@ function BodyView({ bodyForm, setBodyForm, saveBody, bodyLogs, saving }) {
             <span className="stage-label">Daily check-in</span>
             <h2>Log weight</h2>
           </div>
-          <div className="two-fields">
+          <div className="one-field">
             <label>
               Weight kg
               <input type="number" min="0" step="0.1" inputMode="decimal" value={bodyForm.weight} placeholder="75.2" onChange={(event) => setBodyForm({ ...bodyForm, weight: event.target.value })} />
-            </label>
-            <label>
-              Body fat %
-              <input type="number" min="0" max="80" step="0.1" inputMode="decimal" value={bodyForm.bodyFat} placeholder="18" onChange={(event) => setBodyForm({ ...bodyForm, bodyFat: event.target.value })} />
             </label>
           </div>
           <button className="primary primary-accent" disabled={saving}><Scale size={18} />Save Today's Log</button>
@@ -1494,7 +1484,7 @@ function BodyView({ bodyForm, setBodyForm, saveBody, bodyLogs, saving }) {
             <div className="row" key={entry.id}>
               <div>
                 <strong>{Number(entry.weight).toFixed(1)} kg</strong>
-                <span>{formatDate(entry.log_date)}{entry.body_fat ? ` - ${entry.body_fat}% body fat` : ""}</span>
+                <span>{formatDate(entry.log_date)}</span>
               </div>
               <b>{bodyTrend(entry, bodyLogs)}</b>
             </div>
@@ -1693,7 +1683,6 @@ function dailyMeta(workout, bodyLog) {
   else parts.push("No steps logged");
   if (bodyLog) {
     parts.push(`${Number(bodyLog.weight).toFixed(1)} kg`);
-    if (bodyLog.body_fat) parts.push(`${bodyLog.body_fat}% body fat`);
   }
   return parts.join(" - ");
 }

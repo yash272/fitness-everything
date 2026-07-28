@@ -13,7 +13,7 @@ A mobile-first personal fitness tracker built with React, Supabase, and Vercel.
 - Exercises with weighted sets, bodyweight rep sets, or time-only sets
 - Previous bests for the same exercise
 - PR flags when you beat a previous weighted, rep, or time mark
-- Daily body weight in kg and body fat logs
+- Daily body weight in kg
 - 30/60/90 day weight trend chart
 - Current week and month workout day counts
 
