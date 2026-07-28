@@ -1031,7 +1031,7 @@ function WorkoutView({ selectedDate, selectedSplit, changeSplit, exerciseForm, s
         </section>
       )}
 
-      <section className="panel-section">
+      <section className="exercises-section">
         <h2>Exercises</h2>
         <div className="exercise-list">
           {selectedWorkout?.exercises?.length ? selectedWorkout.exercises.map((exercise) => {

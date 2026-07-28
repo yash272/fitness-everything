@@ -17,6 +17,7 @@
   --faint: #748078;
   --accent: #d7ff4f;
   --accent-ink: #172019;
+  --accent-text: #4f5f0a;
   --accent-soft: rgba(174, 213, 47, 0.18);
   --accent-line: rgba(137, 173, 35, 0.55);
   --danger: #d9564a;
@@ -44,6 +45,7 @@
   --text: #f2f6f2;
   --muted: #b8c2ba;
   --faint: #89958c;
+  --accent-text: var(--accent);
   --accent-soft: rgba(215, 255, 79, 0.12);
   --accent-line: rgba(215, 255, 79, 0.45);
   --danger: #ef766c;
@@ -918,6 +920,18 @@ select:focus {
 
 /* ---------- Exercise cards ---------- */
 
+.exercises-section {
+  margin: 0 0 12px;
+}
+
+.exercises-section > h2 {
+  margin-bottom: 10px;
+}
+
+.exercises-section .exercise-list {
+  margin-top: 0;
+}
+
 .exercise-card {
   overflow: hidden;
 }
@@ -938,7 +952,7 @@ select:focus {
   padding: 0 8px;
   border-radius: 5px;
   background: var(--accent-soft);
-  color: var(--accent);
+  color: var(--accent-text);
   font-size: 0.68rem;
   font-weight: 650;
   letter-spacing: 0.04em;
@@ -989,7 +1003,7 @@ select:focus {
 }
 
 .set-row em {
-  color: var(--accent);
+  color: var(--accent-text);
   font-size: 0.68rem;
   font-style: normal;
   font-weight: 650;
