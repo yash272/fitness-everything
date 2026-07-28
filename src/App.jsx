@@ -1,9 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Activity, BarChart3, Bolt, CalendarDays, CalendarRange, ChevronLeft, ChevronRight, Download, Dumbbell, Moon, Plus, RefreshCw, Scale, Sun, Trash2 } from "lucide-react";
 import { buildFitnessExport, exportFilename } from "./exportData";
 import { buildSuggestedPlanForSplit, canonicalSplit, restoreSuggestedPlanForSplit, shouldShowSuggestedPlan, suggestedPlanDraftStorageKey, suggestedPlanHiddenStorageKey } from "./workoutPlan";
 import { addSetToPlan, removeSetFromPlan, removeSetFromWorkouts } from "./workoutMutations";
 import { isSupabaseConfigured, supabase } from "./supabaseClient";
+import { buildWeightChartModel } from "./weightChartUtils";
+import { hasWorkoutActivity, workoutStatusLabel, workoutTypeForEdit, workoutTypeLabel } from "./workoutDisplayUtils";
 
 const DEFAULT_WORKOUT_TYPES = ["Push", "Pull", "Legs", "Cardio", "Sports", "Mobility"];
 const DEFAULT_EXERCISES = {
@@ -511,13 +513,13 @@ function Tracker() {
     { id: "dashboard", label: "Dashboard", icon: BarChart3 },
     { id: "daily", label: "Logs", icon: CalendarDays },
     { id: "workout", label: "Workout", icon: Dumbbell },
-    { id: "body", label: "Progress", icon: Scale }
+    { id: "body", label: "Body", icon: Scale }
   ];
   const viewTitles = {
     dashboard: "Dashboard",
     daily: "Logs",
     workout: "Workout",
-    body: "Progress"
+    body: "Body"
   };
   const activeTitle = viewTitles[activeView] || viewTitles.dashboard;
   const dateChipDate = activeView === "workout" ? workoutDate : todayKey();
@@ -527,17 +529,18 @@ function Tracker() {
     <div className="app-shell">
       <header className="topbar">
         <div className="brand">
-          <span className="brand-mark"><Bolt size={23} strokeWidth={2.8} /></span>
-          <span>
-            <strong>fitness</strong>
-            <small>Training Log</small>
-          </span>
+          <span className="brand-mark"><Bolt size={18} strokeWidth={2.4} /></span>
+          <strong>fitness</strong>
         </div>
         <nav className="desktop-tabs" aria-label="Primary">
           {navItems.map((item) => {
             const Icon = item.icon;
             return (
-              <button key={item.id} className={activeView === item.id ? "active" : ""} onClick={() => changeView(item.id)}>
+              <button
+                key={item.id}
+                className={`${activeView === item.id ? "active" : ""} ${item.id === "workout" ? "workout-tab" : ""}`.trim()}
+                onClick={() => changeView(item.id)}
+              >
                 <Icon size={17} />
                 {item.label}
               </button>
@@ -576,7 +579,7 @@ function Tracker() {
         </div>
       </header>
 
-      <main className="app">
+      <main className={`app view-frame view-${activeView}`} key={activeView}>
         <section className="hero-row">
           <h1>{activeTitle}</h1>
           {activeView === "workout" ? (
@@ -681,7 +684,11 @@ function Tracker() {
         {navItems.map((item) => {
           const Icon = item.icon;
           return (
-            <button key={item.id} className={activeView === item.id ? "active" : ""} onClick={() => changeView(item.id)}>
+            <button
+              key={item.id}
+              className={`${activeView === item.id ? "active" : ""} ${item.id === "workout" ? "workout-tab" : ""}`.trim()}
+              onClick={() => changeView(item.id)}
+            >
               <Icon size={21} />
               <span>{item.label}</span>
             </button>
@@ -694,59 +701,82 @@ function Tracker() {
 
 function Dashboard({ workoutSets, todayWorkout, todayPrs, latestBody, weekDays, monthDays, bodyLogs, range, setRange, recentPrs, todaySteps }) {
   const didWorkoutToday = hasWorkoutActivity(todayWorkout);
+  const chartModel = useMemo(() => buildWeightChartModel(bodyLogs, range), [bodyLogs, range]);
+  const firstVisibleWeight = chartModel.points[0] ? Number(chartModel.points[0].weight) : null;
+  const latestVisibleWeight = chartModel.points.at(-1) ? Number(chartModel.points.at(-1).weight) : null;
+  const visibleWeightChange = firstVisibleWeight === null || latestVisibleWeight === null
+    ? null
+    : latestVisibleWeight - firstVisibleWeight;
+  const visibleWeightChangeLabel = visibleWeightChange === null
+    ? "--"
+    : `${visibleWeightChange > 0 ? "+" : ""}${visibleWeightChange.toFixed(1)} kg`;
 
   return (
-    <>
-      <section className="stat-grid dashboard-primary">
-        <Stat label="Latest Weight" value={latestBody ? `${Number(latestBody.weight).toFixed(1)} kg` : "-- kg"} detail={latestBody ? `${formatDate(latestBody.log_date)}${latestBody.body_fat ? ` - ${latestBody.body_fat}% body fat` : ""}` : "No weigh-in yet"} />
-      </section>
-
-      <section className="panel-section trend-panel">
-        <div className="section-head">
-          <h2>Weight Trend</h2>
-          <div className="segmented">
-            {[30, 60, 90].map((days) => <button key={days} className={range === days ? "active" : ""} onClick={() => setRange(days)}>{days}D</button>)}
+    <div className="dashboard-layout">
+      <FocusStage className="dashboard-focus">
+        <div className="focus-stage-head">
+          <div>
+            <span className="stage-label">Latest weight</span>
+            <strong className="stage-value data-value">
+              {latestBody ? Number(latestBody.weight).toFixed(1) : "--"}
+              <small> kg</small>
+            </strong>
+            <p>{latestBody ? formatDate(latestBody.log_date) : "No weigh-in yet"}</p>
+          </div>
+          <div className="segmented segmented-dark" aria-label="Weight range">
+            {[30, 60, 90].map((days) => (
+              <button
+                key={days}
+                className={range === days ? "active" : ""}
+                onClick={() => setRange(days)}
+              >
+                {days}D
+              </button>
+            ))}
           </div>
         </div>
         <WeightChart logs={bodyLogs} range={range} />
-        <div className="trend-meta">
+        <div className="trend-meta trend-meta-dark">
           <div>
-            <span>Max Weight</span>
-            <strong>{bodyLogs.length ? `${Math.max(...bodyLogs.map((entry) => Number(entry.weight))).toFixed(1)} kg` : "-- kg"}</strong>
+            <span>Change</span>
+            <strong className="data-value">{visibleWeightChangeLabel}</strong>
           </div>
           <div>
-            <span>Latest</span>
-            <strong>{latestBody ? `${Number(latestBody.weight).toFixed(1)} kg` : "-- kg"}</strong>
+            <span>Body fat</span>
+            <strong className="data-value">{latestBody?.body_fat ? `${latestBody.body_fat}%` : "--"}</strong>
           </div>
         </div>
-      </section>
+      </FocusStage>
 
       <div className="dashboard-after-grid">
         <section className="stat-grid dashboard-support-stats">
-          <Stat label="Today" value={didWorkoutToday ? workoutTypeLabel(todayWorkout.split) : "Rest"} detail={didWorkoutToday ? `${workoutSets} sets - ${todayWorkout?.exercises?.length || 0} exercises - ${todayPrs} PR sets` : "No exercise sets logged today"} />
+          <Stat label="Today" value={workoutStatusLabel(todayWorkout)} detail={didWorkoutToday ? `${workoutSets} sets - ${todayWorkout?.exercises?.length || 0} exercises - ${todayPrs} PR sets` : "No exercise sets logged today"} />
+          <Stat label="Steps Today" value={todaySteps ? todaySteps.toLocaleString() : "--"} detail={todaySteps ? "Logged today" : "No steps yet"} />
           <Stat label="This Week" value={`${weekDays} days`} detail="Workout days since Monday" />
           <Stat label="This Month" value={`${monthDays} days`} detail="Workout days this month" />
-          <Stat label="Steps Today" value={todaySteps ? todaySteps.toLocaleString() : "--"} detail={todaySteps ? "Logged today" : "No steps yet"} />
         </section>
 
         <section className="panel-section pr-panel">
           <div className="section-head">
             <h2>Recent PRs</h2>
           </div>
-          <div className="list">
-            {recentPrs.length ? recentPrs.map((pr) => (
-              <div className="row" key={pr.id}>
-                <div>
-                  <strong>{pr.exercise}</strong>
-                  <span>{formatDate(pr.date)} - {workoutTypeLabel(pr.split)}</span>
+          <div className="list pr-list">
+            {recentPrs.length ? recentPrs.map((pr) => {
+              const typeLabel = workoutTypeLabel(pr.split);
+              return (
+                <div className="row" key={pr.id}>
+                  <div>
+                    <strong>{pr.exercise}</strong>
+                    <span>{formatDate(pr.date)}{typeLabel ? ` - ${typeLabel}` : ""}</span>
+                  </div>
+                  <b>{formatSet(pr, pr.trackingType)}</b>
                 </div>
-                <b>{formatSet(pr, pr.trackingType)}</b>
-              </div>
-            )) : <Empty text="No PRs yet." />}
+              );
+            }) : <Empty text="No PRs yet." />}
           </div>
         </section>
       </div>
-    </>
+    </div>
   );
 }
 
@@ -765,7 +795,7 @@ function DailyView({ workouts, bodyLogs, selectedDate, setSelectedDate, calendar
 
   return (
     <>
-      <section className="panel-section">
+      <section className="log-navigator">
         <div className="section-head">
           <div>
             <h2>{calendarMode === "week" ? `${formatShortDate(weekStart)} - ${formatShortDate(weekEnd)}` : calendarMonth.toLocaleDateString(undefined, { month: "long", year: "numeric" })}</h2>
@@ -797,7 +827,17 @@ function DailyView({ workouts, bodyLogs, selectedDate, setSelectedDate, calendar
             selectedDate={selectedDate}
             setSelectedDate={setSelectedDate}
           />
-        ) : (
+        ) : null}
+      </section>
+
+      <FocusStage className="log-focus">
+        <span className="stage-label">{formatLongDate(selectedDate)}</span>
+        <h2>Workout</h2>
+        <DayWorkoutDetails workout={selectedLog} bodyLog={selectedBodyLog} />
+      </FocusStage>
+
+      {calendarMode === "month" ? (
+        <section className="panel-section month-calendar-panel">
           <CalendarGrid
             month={calendarMonth}
             workouts={workouts}
@@ -805,13 +845,8 @@ function DailyView({ workouts, bodyLogs, selectedDate, setSelectedDate, calendar
             selectedDate={selectedDate}
             setSelectedDate={setSelectedDate}
           />
-        )}
-      </section>
-
-      <section className="panel-section">
-        <h2>{formatLongDate(selectedDate)} Workouts</h2>
-        <DayWorkoutDetails workout={selectedLog} bodyLog={selectedBodyLog} />
-      </section>
+        </section>
+      ) : null}
     </>
   );
 }
@@ -839,7 +874,7 @@ function WeekGrid({ weekStart, workouts, bodyLogs, selectedDate, setSelectedDate
               {day.getDate()}
             </strong>
             <div>
-              <b>{didWorkout ? workoutTypeLabel(log.split, "Gym") : "Rest"}</b>
+              <b>{workoutStatusLabel(log)}</b>
               <small>{log?.steps ? formatCalendarSteps(log.steps) : "--"}</small>
               <small>{bodyLog ? Number(bodyLog.weight).toFixed(1) : "--"}</small>
             </div>
@@ -855,7 +890,7 @@ function DayWorkoutDetails({ workout, bodyLog }) {
   if (!workout) {
     return (
       <div className="day-summary rest">
-        <strong>Body log</strong>
+        <strong>Rest day</strong>
         <span>{bodyLog ? `${Number(bodyLog.weight).toFixed(1)} kg${bodyLog.body_fat ? ` - ${bodyLog.body_fat}% body fat` : ""}` : "No workout logged"}</span>
       </div>
     );
@@ -869,12 +904,15 @@ function DayWorkoutDetails({ workout, bodyLog }) {
     );
   }
 
+  const typeLabel = workoutTypeLabel(workout.split);
   return (
     <div className="day-detail">
-      <div className="day-summary">
-        <strong>{workoutTypeLabel(workout.split)}</strong>
-        <span>{dailyMeta(workout, bodyLog)}</span>
-      </div>
+      {typeLabel ? (
+        <div className="day-summary">
+          <strong>{typeLabel}</strong>
+          <span>{dailyMeta(workout, bodyLog)}</span>
+        </div>
+      ) : <p className="day-meta">{dailyMeta(workout, bodyLog)}</p>}
       {workout.exercises?.length ? workout.exercises.map((exercise) => (
         <article className="mini-exercise" key={exercise.id}>
           <h3>{exercise.name}</h3>
@@ -884,7 +922,7 @@ function DayWorkoutDetails({ workout, bodyLog }) {
             ))}
           </div>
         </article>
-      )) : <Empty text={`${workoutTypeLabel(workout.split)} day saved. No exercise sets logged yet.`} />}
+      )) : <Empty text="Workout saved. No exercise sets logged yet." />}
     </div>
   );
 }
@@ -912,7 +950,7 @@ function CalendarGrid({ month, workouts, bodyLogs, selectedDate, setSelectedDate
             onClick={() => setSelectedDate(key)}
           >
             <strong>{day.getDate()}</strong>
-            <span className="calendar-workout">{didWorkout ? log.split : isSaved ? "Rest" : ""}</span>
+            <span className="calendar-workout">{didWorkout ? workoutStatusLabel(log) : isSaved ? "Rest" : ""}</span>
             <span className="calendar-metric">{hasSteps ? formatCalendarSteps(log.steps) : ""}</span>
             <small>{bodyLog ? Number(bodyLog.weight).toFixed(1) : ""}</small>
             <span className="calendar-dots" aria-label={`${didWorkout ? "Workout logged" : "Rest day"}, ${hasSteps ? "steps logged" : "no steps"}, ${bodyLog ? "weight logged" : "no weight"}`}>
@@ -976,7 +1014,6 @@ function WorkoutView({ selectedDate, selectedSplit, changeSplit, exerciseForm, s
   const [hiddenSplits, setHiddenSplits] = useState(() => loadHiddenSplits(selectedDate));
   const planDraftStorageKeyRef = useRef(suggestedPlanDraftStorageKey(selectedDate, selectedSplit));
   const hiddenSplitsStorageKeyRef = useRef(suggestedPlanHiddenStorageKey(selectedDate));
-  const workoutTypeTitle = selectedSplit ? workoutTypeLabel(selectedSplit) : "Workout Type";
   const existingExerciseNames = useMemo(() => new Set((selectedWorkout?.exercises || []).map((exercise) => exercise.name.toLowerCase())), [selectedWorkout?.exercises]);
   const selectedCanonicalSplit = canonicalSplit(selectedSplit);
   const isSuggestedPlanHidden = Boolean(selectedCanonicalSplit && hiddenSplits.has(selectedCanonicalSplit));
@@ -1128,14 +1165,14 @@ function WorkoutView({ selectedDate, selectedSplit, changeSplit, exerciseForm, s
 
   return (
     <>
-      <section className="panel-section form">
+      <FocusStage className="workout-focus form">
         <div className="daily-control-head">
           <div>
-            <h2>{workoutTypeTitle}</h2>
-            <p>{selectedSplit ? selectedDate === todayKey() ? "Today" : formatLongDate(selectedDate) : `No type set for ${selectedDate === todayKey() ? "today" : formatLongDate(selectedDate)}`}</p>
+            <span className="stage-label">{selectedDate === todayKey() ? "Active session" : formatLongDate(selectedDate)}</span>
+            <h2 className="workout-title">{selectedSplit ? workoutTypeLabel(selectedSplit) : "Set workout type"}</h2>
           </div>
           {!isEditingType ? (
-            <button type="button" className="secondary mini" onClick={() => setIsEditingType(true)}>Edit</button>
+            <button type="button" className="focus-action" onClick={() => setIsEditingType(true)}>Edit</button>
           ) : null}
         </div>
         <div className="quick-split-buttons" aria-label="Quick workout templates">
@@ -1198,7 +1235,7 @@ function WorkoutView({ selectedDate, selectedSplit, changeSplit, exerciseForm, s
             </form>
           ) : null}
         </div>
-      </section>
+      </FocusStage>
 
       {showSuggestedPlan ? (
         <SuggestedWorkoutPlan
@@ -1238,7 +1275,7 @@ function WorkoutView({ selectedDate, selectedSplit, changeSplit, exerciseForm, s
       ) : null}
 
       {isAddingExercise ? (
-        <form className="panel-section form" onSubmit={addExercise}>
+        <form className="panel-section form add-exercise-form" onSubmit={addExercise}>
           <div className="daily-control-head">
             <div>
               <h2>Add Exercise</h2>
@@ -1297,22 +1334,22 @@ function WorkoutView({ selectedDate, selectedSplit, changeSplit, exerciseForm, s
           <button className="primary" disabled={saving}><Plus size={18} />Add Exercise</button>
         </form>
       ) : (
-        <section className="panel-section add-exercise-prompt">
+        <section className="add-exercise-bar">
           <button type="button" className="primary add-exercise-toggle" onClick={() => setIsAddingExercise(true)}>
             <Plus size={18} />Add Exercise
           </button>
         </section>
       )}
 
-      <section className="panel-section">
-        <h2>{selectedDate === todayKey() ? "Today's Workout" : `${formatLongDate(selectedDate)} Workout`}</h2>
+      <section className="exercises-section">
+        <h2>Exercises</h2>
         <div className="exercise-list">
           {selectedWorkout?.exercises?.length ? selectedWorkout.exercises.map((exercise) => {
             const trackingType = exercise.tracking_type || "weighted";
             const previous = bestBefore(exercise.name, trackingType, selectedDate);
             const prCount = exercise.exercise_sets.filter((set) => set.is_pr).length;
             return (
-              <article className="exercise-card" key={exercise.id}>
+              <article className="exercise-card exercise-record" key={exercise.id}>
                 <div className="exercise-head">
                   <div>
                     <h3>{exercise.name}</h3>
@@ -1320,9 +1357,9 @@ function WorkoutView({ selectedDate, selectedSplit, changeSplit, exerciseForm, s
                   </div>
                   {prCount ? <span className="badge">PR</span> : null}
                 </div>
-                <div className="sets">
+                <div className="sets" role="list" aria-label={`${exercise.name} sets`}>
                   {exercise.exercise_sets.map((set, index) => (
-                    <div className="set-row" key={set.id}>
+                    <div className="set-row" role="listitem" key={set.id}>
                       <span>{index + 1}</span>
                       <b>{formatSet(set, trackingType)}</b>
                       <em>{set.is_pr ? "NEW PR" : ""}</em>
@@ -1418,20 +1455,25 @@ function SuggestedWorkoutPlan({ plan, existingExerciseNames, exerciseNames, upda
 function BodyView({ bodyForm, setBodyForm, saveBody, bodyLogs, saving }) {
   return (
     <>
-      <form className="panel-section form" onSubmit={saveBody}>
-        <h2>Log Body</h2>
-        <div className="two-fields">
-          <label>
-            Weight kg
-            <input type="number" min="0" step="0.1" inputMode="decimal" value={bodyForm.weight} placeholder="75.2" onChange={(event) => setBodyForm({ ...bodyForm, weight: event.target.value })} />
-          </label>
-          <label>
-            Body fat %
-            <input type="number" min="0" max="80" step="0.1" inputMode="decimal" value={bodyForm.bodyFat} placeholder="18" onChange={(event) => setBodyForm({ ...bodyForm, bodyFat: event.target.value })} />
-          </label>
-        </div>
-        <button className="primary" disabled={saving}><Scale size={18} />Save Today's Log</button>
-      </form>
+      <FocusStage className="body-focus">
+        <form className="form body-entry" onSubmit={saveBody}>
+          <div>
+            <span className="stage-label">Daily check-in</span>
+            <h2>Log weight</h2>
+          </div>
+          <div className="two-fields">
+            <label>
+              Weight kg
+              <input type="number" min="0" step="0.1" inputMode="decimal" value={bodyForm.weight} placeholder="75.2" onChange={(event) => setBodyForm({ ...bodyForm, weight: event.target.value })} />
+            </label>
+            <label>
+              Body fat %
+              <input type="number" min="0" max="80" step="0.1" inputMode="decimal" value={bodyForm.bodyFat} placeholder="18" onChange={(event) => setBodyForm({ ...bodyForm, bodyFat: event.target.value })} />
+            </label>
+          </div>
+          <button className="primary primary-accent" disabled={saving}><Scale size={18} />Save Today's Log</button>
+        </form>
+      </FocusStage>
 
       <section className="panel-section">
         <h2>History</h2>
@@ -1452,58 +1494,111 @@ function BodyView({ bodyForm, setBodyForm, saveBody, bodyLogs, saving }) {
 }
 
 function WeightChart({ logs, range }) {
-  const cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - range + 1);
-  const points = logs
-    .filter((entry) => entry.log_date >= dateKey(cutoff))
-    .slice()
-    .sort((a, b) => a.log_date.localeCompare(b.log_date));
+  const [selectedPointId, setSelectedPointId] = useState(null);
+  const [tooltipPosition, setTooltipPosition] = useState(null);
+  const plotRef = useRef(null);
+  const tooltipRef = useRef(null);
+  const model = useMemo(() => buildWeightChartModel(logs, range), [logs, range]);
+  const selectedPoint = model.points.find((point) => point.id === selectedPointId);
 
-  if (points.length < 2) {
+  useEffect(() => {
+    setSelectedPointId(null);
+  }, [range]);
+
+  useLayoutEffect(() => {
+    const plot = plotRef.current;
+    const tooltip = tooltipRef.current;
+    if (!selectedPoint || !plot || !tooltip) return undefined;
+
+    const positionTooltip = () => {
+      const plotRect = plot.getBoundingClientRect();
+      const tooltipRect = tooltip.getBoundingClientRect();
+      const anchorX = (selectedPoint.x / 100) * plotRect.width;
+      const anchorY = (selectedPoint.y / 100) * plotRect.height;
+      const halfTooltipWidth = tooltipRect.width / 2;
+      const gap = 8;
+      const edgeInset = 1;
+
+      setTooltipPosition({
+        id: selectedPoint.id,
+        left: Math.min(
+          plotRect.width - halfTooltipWidth - edgeInset,
+          Math.max(halfTooltipWidth + edgeInset, anchorX)
+        ),
+        top: Math.min(
+          plotRect.height - edgeInset,
+          Math.max(tooltipRect.height + edgeInset, anchorY - gap)
+        )
+      });
+    };
+
+    positionTooltip();
+    const resizeObserver = new ResizeObserver(positionTooltip);
+    resizeObserver.observe(plot);
+    resizeObserver.observe(tooltip);
+    return () => resizeObserver.disconnect();
+  }, [selectedPoint]);
+
+  if (model.points.length < 2) {
     return (
       <div className="chart empty-chart" role="img" aria-label="Weight trend chart">
-        <span>Not enough weigh-ins yet</span>
+        <span>Log at least two weights to see your trend</span>
       </div>
     );
   }
 
-  const weights = points.map((point) => Number(point.weight));
-  const min = Math.min(...weights) - 0.5;
-  const max = Math.max(...weights) + 0.5;
-  const mid = (min + max) / 2;
-  const xFor = (index) => (index / (points.length - 1)) * 100;
-  const yFor = (value) => 88 - ((value - min) / (max - min || 1)) * 72;
-  const svgPoints = points.map((point, index) => `${xFor(index).toFixed(2)},${yFor(Number(point.weight)).toFixed(2)}`).join(" ");
-  const areaPoints = `0,100 ${svgPoints} 100,100`;
-  const lastPoint = points[points.length - 1];
-  const labelIndexes = [...new Set([
-    0,
-    Math.floor((points.length - 1) * 0.25),
-    Math.floor((points.length - 1) * 0.5),
-    Math.floor((points.length - 1) * 0.75),
-    points.length - 1
-  ])];
-
   return (
-    <div className="chart graph-chart" role="img" aria-label={`Weight trend from ${formatDate(points[0].log_date)} to ${formatDate(lastPoint.log_date)}`}>
+    <div
+      className="chart graph-chart"
+      role="group"
+      aria-label={`Weight trend from ${formatDate(model.points[0].log_date)} to ${formatDate(model.points.at(-1).log_date)}`}
+    >
       <div className="chart-y-axis" aria-hidden="true">
-        <span>{max.toFixed(1)} kg</span>
-        <span>{mid.toFixed(1)} kg</span>
-        <span>{min.toFixed(1)} kg</span>
+        <span>{model.max.toFixed(1)} kg</span>
+        <span>{model.mid.toFixed(1)} kg</span>
+        <span>{model.min.toFixed(1)} kg</span>
       </div>
-      <div className="chart-plot" aria-hidden="true">
-        <svg className="chart-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
-          <polygon className="chart-area" points={areaPoints} />
-          <polyline className="chart-line" points={svgPoints} />
+      <div className="chart-plot" ref={plotRef} key={range}>
+        <svg className="chart-svg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+          {[16, 52, 88].map((y) => (
+            <line key={y} className="chart-gridline" x1="0" y1={y} x2="100" y2={y} />
+          ))}
+          <polygon className="chart-area" points={model.areaPoints} />
+          <polyline className="chart-line" points={model.svgPoints} />
         </svg>
-        <span
-          className="chart-point"
-          style={{ left: `${xFor(points.length - 1)}%`, top: `${yFor(Number(lastPoint.weight))}%` }}
-        />
+        {model.points.map((point) => (
+          <button
+            type="button"
+            key={point.id}
+            className={`chart-hit ${selectedPointId === point.id ? "selected" : ""}`}
+            style={{
+              left: `${point.hitLeft}%`,
+              right: `calc(100% - ${point.hitRight}%)`,
+              "--dot-x": `${point.dotX}%`,
+              "--dot-y": `${point.y}%`
+            }}
+            aria-label={`${formatDate(point.log_date)}, ${Number(point.weight).toFixed(1)} kilograms`}
+            onClick={() => setSelectedPointId(point.id)}
+            onFocus={() => setSelectedPointId(point.id)}
+          />
+        ))}
+        {selectedPoint ? (
+          <output
+            className="chart-tooltip"
+            ref={tooltipRef}
+            style={{
+              left: tooltipPosition?.id === selectedPoint.id ? tooltipPosition.left : 0,
+              top: tooltipPosition?.id === selectedPoint.id ? tooltipPosition.top : 0,
+              visibility: tooltipPosition?.id === selectedPoint.id ? "visible" : "hidden"
+            }}
+          >
+            {formatDate(selectedPoint.log_date)} · {Number(selectedPoint.weight).toFixed(1)} kg
+          </output>
+        ) : null}
       </div>
       <div className="chart-x-axis" aria-hidden="true">
-        {labelIndexes.map((index) => (
-          <span key={`${points[index].log_date}-${index}`}>{formatDate(points[index].log_date)}</span>
+        {model.labelIndexes.map((index) => (
+          <span key={model.points[index].id}>{formatDate(model.points[index].log_date)}</span>
         ))}
       </div>
     </div>
@@ -1536,6 +1631,10 @@ function Empty({ text }) {
   return <div className="empty">{text}</div>;
 }
 
+function FocusStage({ className = "", children }) {
+  return <section className={`focus-stage ${className}`.trim()}>{children}</section>;
+}
+
 function Shell({ message, compact = false }) {
   return <main className={compact ? "shell compact" : "shell"}>{message}</main>;
 }
@@ -1565,18 +1664,6 @@ function monthStartKey() {
 
 function workoutDaysWithin(workouts, startDate, endDate) {
   return workouts.filter((workout) => workout.workout_date >= startDate && workout.workout_date <= endDate && hasWorkoutActivity(workout)).length;
-}
-
-function hasWorkoutActivity(workout) {
-  return Boolean(workout?.exercises?.some((exercise) => exercise.exercise_sets?.length));
-}
-
-function workoutTypeForEdit(workout) {
-  return workout?.split?.trim() || "";
-}
-
-function workoutTypeLabel(split, fallback = "Workout") {
-  return split?.trim() || fallback;
 }
 
 function bodyTrend(entry, logs) {

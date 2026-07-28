@@ -6,12 +6,12 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "test": "node --test src/*.test.js && node src/exportData.test.mjs && node src/workoutPlan.test.mjs && node src/workoutMutations.test.mjs",
     "preview": "vite preview",
     "lint": "eslint .",
     "db:login": "npx supabase login",
     "db:link": "npx supabase link",
-    "db:push": "npx supabase db push",
-    "test": "node src/exportData.test.mjs && node src/workoutPlan.test.mjs && node src/workoutMutations.test.mjs"
+    "db:push": "npx supabase db push"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",
