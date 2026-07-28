@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "test": "node --test src/*.test.js",
+    "test": "node --test src/*.test.js && node src/exportData.test.mjs && node src/workoutPlan.test.mjs && node src/workoutMutations.test.mjs",
     "preview": "vite preview",
     "lint": "eslint .",
     "db:login": "npx supabase login",

@@ -274,6 +274,63 @@ input[type="number"] {
   display: none;
 }
 
+.export-control {
+  position: relative;
+}
+
+.export-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 30;
+  display: grid;
+  gap: 10px;
+  width: min(260px, calc(100vw - 32px));
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px;
+  background: var(--surface);
+  box-shadow: var(--shadow-strong);
+}
+
+.export-popover label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.export-popover input,
+.export-popover button {
+  min-height: 38px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 0 10px;
+  background: var(--surface-low);
+  color: var(--text);
+  font: inherit;
+}
+
+.export-popover button {
+  background: var(--ink);
+  color: var(--ink-text);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.export-popover button.secondary {
+  background: var(--surface-low);
+  color: var(--text);
+}
+
+.export-popover button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 /* ---------- Page header ---------- */
 
 .hero-row {
@@ -993,7 +1050,7 @@ select:focus {
 
 .set-row {
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: auto 1fr auto auto;
   gap: 10px;
   align-items: center;
   min-height: 34px;
@@ -1036,6 +1093,12 @@ select:focus {
   letter-spacing: 0.04em;
 }
 
+.set-delete-button {
+  width: 30px;
+  min-height: 30px;
+  border-radius: 5px;
+}
+
 .card-actions {
   display: grid;
   grid-template-columns: 1fr auto;
@@ -1046,6 +1109,29 @@ select:focus {
 .card-actions .danger {
   width: 40px;
   padding: 0;
+}
+
+
+.quick-split-buttons {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.quick-split-buttons button {
+  min-height: 38px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 6px;
+  background: var(--focus-raised);
+  color: var(--focus-muted);
+  font-size: 0.82rem;
+  font-weight: 650;
+}
+
+.quick-split-buttons button.active {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-ink);
 }
 
 /* ---------- Set editor ---------- */
@@ -1155,6 +1241,124 @@ select:focus {
   color: var(--faint);
   font-size: 0.76rem;
   line-height: 1.4;
+}
+
+
+/* ---------- Suggested workout plan ---------- */
+.suggested-plan {
+  display: grid;
+  gap: 12px;
+  border: 0;
+  padding: 0;
+  background: transparent;
+}
+
+.suggested-plan-head {
+  align-items: start;
+}
+
+.suggested-plan-list {
+  display: grid;
+  gap: 10px;
+}
+
+.suggested-exercise {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--line-soft);
+  border-radius: 7px;
+  padding: 11px;
+  background: var(--surface);
+}
+
+.suggested-exercise.already-logged {
+  border-color: var(--accent-line);
+}
+
+.suggested-exercise-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: end;
+}
+
+.target-set-grid {
+  display: grid;
+  gap: 7px;
+}
+
+.target-set-row {
+  display: grid;
+  grid-template-columns: auto 1fr 1fr auto;
+  gap: 8px;
+  align-items: end;
+}
+
+.target-set-row > span {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 42px;
+  border-radius: 5px;
+  background: var(--surface-low);
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+
+.suggested-add-set {
+  width: 100%;
+  min-height: 34px;
+  margin-top: 8px;
+}
+
+.suggested-note {
+  color: var(--faint);
+  font-size: 0.75rem;
+  line-height: 1.45;
+}
+
+
+.suggested-exercise-actions {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+@media (max-width: 540px) {
+  .suggested-exercise-actions {
+    grid-template-columns: 1fr;
+  }
+}
+
+.suggested-plan-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.suggested-plan-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.suggested-plan-toggle p {
+  color: var(--muted);
+  font-size: 0.82rem;
+  margin-top: 4px;
+}
+
+.suggested-toggle-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 /* ---------- Logs: day details ---------- */
@@ -1589,7 +1793,8 @@ select:focus {
 
 @media (max-width: 520px) {
   .two-fields,
-  .form-actions {
+  .form-actions,
+  .suggested-plan-actions {
     grid-template-columns: 1fr;
   }
 

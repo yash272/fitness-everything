@@ -1,14 +1,17 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Activity, BarChart3, Bolt, CalendarDays, CalendarRange, ChevronLeft, ChevronRight, Download, Dumbbell, Moon, Plus, RefreshCw, Scale, Sun, Trash2 } from "lucide-react";
+import { buildFitnessExport, exportFilename } from "./exportData";
+import { buildSuggestedPlanForSplit, canonicalSplit, restoreSuggestedPlanForSplit, shouldShowSuggestedPlan, suggestedPlanDraftStorageKey, suggestedPlanHiddenStorageKey } from "./workoutPlan";
+import { addSetToPlan, removeSetFromPlan, removeSetFromWorkouts } from "./workoutMutations";
 import { isSupabaseConfigured, supabase } from "./supabaseClient";
 import { buildWeightChartModel } from "./weightChartUtils";
 import { hasWorkoutActivity, workoutStatusLabel, workoutTypeForEdit, workoutTypeLabel } from "./workoutDisplayUtils";
 
 const DEFAULT_WORKOUT_TYPES = ["Push", "Pull", "Legs", "Cardio", "Sports", "Mobility"];
 const DEFAULT_EXERCISES = {
-  Push: ["Bench Press", "Incline Dumbbell Press", "Shoulder Press", "Lateral Raise", "Triceps Pushdown"],
-  Pull: ["Deadlift", "Pull Up", "Lat Pulldown", "Barbell Row", "Bicep Curl"],
-  Legs: ["Squat", "Leg Press", "Romanian Deadlift", "Leg Curl", "Calf Raise"],
+  Push: ["Flat Dumbbell Bench Press", "Incline Dumbbell Press", "Dumbbell Shoulder Press", "Lateral Raise", "Triceps Rope Pushdown"],
+  Pull: ["Lat Pulldown", "Low Row", "Machine Rear Delt", "Bicep Curl", "Hammer Curl"],
+  Legs: ["Leg Extension", "Goblet Squats", "Leg Curls", "Romanian Deadlift", "Calf Raise"],
   Cardio: ["Treadmill", "Bike", "Rowing", "Stair Climber", "Elliptical"],
   Sports: ["Badminton", "Basketball", "Soccer", "Tennis"],
   Mobility: ["Stretching", "Yoga", "Warmup"]
@@ -58,6 +61,8 @@ function Tracker() {
   const [bodyForm, setBodyForm] = useState({ weight: "", bodyFat: "" });
   const [notice, setNotice] = useState("");
   const [exportFile, setExportFile] = useState(null);
+  const [isExportOptionsOpen, setIsExportOptionsOpen] = useState(false);
+  const [exportMonth, setExportMonth] = useState(() => dateKey(startOfMonth(new Date())).slice(0, 7));
   const workoutDateInputRef = useRef(null);
 
   useEffect(() => {
@@ -284,6 +289,58 @@ function Tracker() {
     }
   }
 
+  async function acceptSuggestedPlan(planExercises) {
+    const suggestions = planExercises
+      .map((exercise) => ({
+        ...exercise,
+        name: exercise.name.trim(),
+        trackingType: exercise.trackingType || "weighted",
+        sets: exercise.sets.map((set) => normalizeSetInput(set, exercise.trackingType || "weighted")).filter(Boolean)
+      }))
+      .filter((exercise) => exercise.name && exercise.sets.length);
+    if (!suggestions.length) return;
+
+    setSaving(true);
+    setNotice("");
+    try {
+      const workoutType = workoutTypeForEdit(selectedWorkout) || workoutTypeForEdit({ split: suggestions[0]?.split }) || "";
+      const workout = await ensureWorkoutForDate(workoutDate, workoutType || undefined, { did_workout: true });
+
+      for (const suggestion of suggestions) {
+        const previous = bestBefore(suggestion.name, suggestion.trackingType, workoutDate);
+        const { data: exercise, error: exerciseError } = await supabase
+          .from("exercises")
+          .insert({ workout_id: workout.id, user_id: userId, name: suggestion.name, tracking_type: suggestion.trackingType })
+          .select("id,user_id,name,tracking_type,created_at")
+          .single();
+        if (exerciseError) throw exerciseError;
+
+        const setRows = suggestion.sets.map((set) => ({
+          exercise_id: exercise.id,
+          user_id: userId,
+          reps: set.reps,
+          weight: set.weight,
+          duration_minutes: set.duration_minutes,
+          is_pr: Boolean(previous) && isBetterSet(set, previous, suggestion.trackingType)
+        }));
+        const { data: sets, error: setError } = await supabase
+          .from("exercise_sets")
+          .insert(setRows)
+          .select("id,user_id,reps,weight,duration_minutes,is_pr,logged_at");
+        if (setError) throw setError;
+
+        setWorkouts((items) => upsertExercise(items, workout.id, { ...exercise, exercise_sets: sets }));
+      }
+      setNotice(suggestions.length === 1 ? `${suggestions[0].name} logged and removed from the plan.` : "Suggested exercises logged. You can still edit by deleting or adding exercises/sets.");
+      return true;
+    } catch (error) {
+      setNotice(error.message);
+      return false;
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function repeatSet(exercise) {
     const last = exercise.exercise_sets?.at(-1);
     if (!last) return;
@@ -317,6 +374,21 @@ function Tracker() {
           : item)
       })));
     }
+    setSaving(false);
+  }
+
+  async function deleteSet(setId) {
+    const setWorkoutDate = workouts.find((workout) => workout.exercises?.some((exercise) => exercise.exercise_sets?.some((set) => set.id === setId)))?.workout_date;
+    if (isFutureDateKey(setWorkoutDate)) {
+      setNotice(FUTURE_WORKOUT_NOTICE);
+      setWorkoutDate(todayKey());
+      return;
+    }
+
+    setSaving(true);
+    const { error } = await supabase.from("exercise_sets").delete().eq("id", setId);
+    if (error) setNotice(error.message);
+    else setWorkouts((items) => removeSetFromWorkouts(items, setId));
     setSaving(false);
   }
 
@@ -393,16 +465,10 @@ function Tracker() {
     }
   }
 
-  function exportMonthData() {
-    const payload = buildMonthExport({
-      month: calendarMonth,
-      workouts,
-      bodyLogs,
-      userId
-    });
+  function downloadExport(payload) {
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
-    const filename = `fitness-everything-${payload.period.month}.json`;
+    const filename = exportFilename(payload);
     if (exportFile?.url) URL.revokeObjectURL(exportFile.url);
     setExportFile({ url, filename, label: payload.period.label });
     const link = document.createElement("a");
@@ -412,6 +478,29 @@ function Tracker() {
     link.click();
     window.setTimeout(() => link.remove(), 0);
     setNotice(`Export ready for ${payload.period.label}. If it did not download automatically, use the download link below.`);
+    setIsExportOptionsOpen(false);
+  }
+
+  function exportSelectedMonth() {
+    const [year, month] = exportMonth.split("-").map(Number);
+    const payload = buildFitnessExport({
+      mode: "month",
+      month: new Date(year, month - 1, 1),
+      workouts,
+      bodyLogs,
+      userId
+    });
+    downloadExport(payload);
+  }
+
+  function exportAllTimeData() {
+    const payload = buildFitnessExport({
+      mode: "all-time",
+      workouts,
+      bodyLogs,
+      userId
+    });
+    downloadExport(payload);
   }
 
   const workoutSets = todayWorkout?.exercises?.reduce((sum, exercise) => sum + exercise.exercise_sets.length, 0) || 0;
@@ -459,10 +548,26 @@ function Tracker() {
           })}
         </nav>
         <div className="top-actions">
-          <button className="icon-button export-button" onClick={exportMonthData} aria-label="Export current month JSON" title="Export current month JSON">
-            <Download size={18} />
-            <span>Export</span>
-          </button>
+          <div className="export-control">
+            <button className="icon-button export-button" onClick={() => setIsExportOptionsOpen((open) => !open)} aria-expanded={isExportOptionsOpen} aria-label="Choose data export range" title="Choose data export range">
+              <Download size={18} />
+              <span>Export</span>
+            </button>
+            {isExportOptionsOpen ? (
+              <div className="export-popover" role="dialog" aria-label="Export options">
+                <label>
+                  <span>Month</span>
+                  <input type="month" value={exportMonth} onChange={(event) => setExportMonth(event.target.value)} />
+                </label>
+                <button type="button" onClick={exportSelectedMonth} disabled={!exportMonth}>
+                  Export month
+                </button>
+                <button type="button" className="secondary" onClick={exportAllTimeData}>
+                  Export all time
+                </button>
+              </div>
+            ) : null}
+          </div>
           <button
             className="icon-button"
             onClick={() => setTheme((current) => current === "dark" ? "light" : "dark")}
@@ -557,7 +662,9 @@ function Tracker() {
             saveDailyLog={saveDailyLog}
             bestBefore={bestBefore}
             repeatSet={repeatSet}
+            deleteSet={deleteSet}
             deleteExercise={deleteExercise}
+            acceptSuggestedPlan={acceptSuggestedPlan}
             saving={saving}
           />
         )}
@@ -858,11 +965,61 @@ function CalendarGrid({ month, workouts, bodyLogs, selectedDate, setSelectedDate
   );
 }
 
-function WorkoutView({ selectedDate, selectedSplit, changeSplit, exerciseForm, setExerciseForm, isAddingExercise, setIsAddingExercise, addExercise, exerciseNames, workoutTypes, selectedWorkout, saveDailyLog, bestBefore, repeatSet, deleteExercise, saving }) {
+function loadSuggestedPlanDraft(selectedDate, selectedSplit) {
+  const fallback = buildSuggestedPlanForSplit(selectedSplit);
+  try {
+    const stored = localStorage.getItem(suggestedPlanDraftStorageKey(selectedDate, selectedSplit));
+    return stored ? JSON.parse(stored) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function saveSuggestedPlanDraft(selectedDate, selectedSplit, planDraft) {
+  try {
+    const key = suggestedPlanDraftStorageKey(selectedDate, selectedSplit);
+    if (planDraft) localStorage.setItem(key, JSON.stringify(planDraft));
+    else localStorage.removeItem(key);
+  } catch {
+    // Ignore storage errors; workout logging still works without draft persistence.
+  }
+}
+
+function loadHiddenSplits(selectedDate) {
+  try {
+    const stored = localStorage.getItem(suggestedPlanHiddenStorageKey(selectedDate));
+    return new Set(stored ? JSON.parse(stored) : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function saveHiddenSplits(selectedDate, hiddenSplits) {
+  try {
+    const key = suggestedPlanHiddenStorageKey(selectedDate);
+    const values = Array.from(hiddenSplits || []);
+    if (values.length) localStorage.setItem(key, JSON.stringify(values));
+    else localStorage.removeItem(key);
+  } catch {
+    // Ignore storage errors; hiding a suggested plan remains session-only.
+  }
+}
+
+function WorkoutView({ selectedDate, selectedSplit, changeSplit, exerciseForm, setExerciseForm, isAddingExercise, setIsAddingExercise, addExercise, exerciseNames, workoutTypes, selectedWorkout, saveDailyLog, bestBefore, repeatSet, deleteSet, deleteExercise, acceptSuggestedPlan, saving }) {
   const [isEditingType, setIsEditingType] = useState(false);
   const [isEditingSteps, setIsEditingSteps] = useState(false);
   const [typeDraft, setTypeDraft] = useState(selectedSplit);
   const [stepsDraft, setStepsDraft] = useState(selectedWorkout?.steps ?? "");
+  const [planDraft, setPlanDraft] = useState(() => loadSuggestedPlanDraft(selectedDate, selectedSplit));
+  const [hiddenSplits, setHiddenSplits] = useState(() => loadHiddenSplits(selectedDate));
+  const planDraftStorageKeyRef = useRef(suggestedPlanDraftStorageKey(selectedDate, selectedSplit));
+  const hiddenSplitsStorageKeyRef = useRef(suggestedPlanHiddenStorageKey(selectedDate));
+  const existingExerciseNames = useMemo(() => new Set((selectedWorkout?.exercises || []).map((exercise) => exercise.name.toLowerCase())), [selectedWorkout?.exercises]);
+  const selectedCanonicalSplit = canonicalSplit(selectedSplit);
+  const isSuggestedPlanHidden = Boolean(selectedCanonicalSplit && hiddenSplits.has(selectedCanonicalSplit));
+  const hasSuggestedPlan = Boolean(planDraft?.exercises?.length);
+  const canRestoreSuggestedPlan = Boolean(selectedCanonicalSplit);
+  const showSuggestedPlan = shouldShowSuggestedPlan({ plan: planDraft, selectedWorkout, hiddenSplits });
 
   useEffect(() => {
     setIsEditingType(false);
@@ -873,6 +1030,26 @@ function WorkoutView({ selectedDate, selectedSplit, changeSplit, exerciseForm, s
     setIsEditingSteps(false);
     setStepsDraft(selectedWorkout?.steps ?? "");
   }, [selectedDate, selectedWorkout?.steps]);
+
+  useEffect(() => {
+    planDraftStorageKeyRef.current = suggestedPlanDraftStorageKey(selectedDate, selectedSplit);
+    setPlanDraft(loadSuggestedPlanDraft(selectedDate, selectedSplit));
+  }, [selectedSplit, selectedDate]);
+
+  useEffect(() => {
+    hiddenSplitsStorageKeyRef.current = suggestedPlanHiddenStorageKey(selectedDate);
+    setHiddenSplits(loadHiddenSplits(selectedDate));
+  }, [selectedDate]);
+
+  useEffect(() => {
+    if (planDraftStorageKeyRef.current !== suggestedPlanDraftStorageKey(selectedDate, selectedSplit)) return;
+    saveSuggestedPlanDraft(selectedDate, selectedSplit, planDraft);
+  }, [selectedDate, selectedSplit, planDraft]);
+
+  useEffect(() => {
+    if (hiddenSplitsStorageKeyRef.current !== suggestedPlanHiddenStorageKey(selectedDate)) return;
+    saveHiddenSplits(selectedDate, hiddenSplits);
+  }, [selectedDate, hiddenSplits]);
 
   async function saveWorkoutType(event) {
     event.preventDefault();
@@ -910,6 +1087,82 @@ function WorkoutView({ selectedDate, selectedSplit, changeSplit, exerciseForm, s
     });
   }
 
+  function updatePlanExercise(index, patch) {
+    setPlanDraft((plan) => plan ? ({
+      ...plan,
+      exercises: plan.exercises.map((exercise, exerciseIndex) => exerciseIndex === index ? { ...exercise, ...patch } : exercise)
+    }) : plan);
+  }
+
+  function updatePlanSet(exerciseIndex, setIndex, field, value) {
+    setPlanDraft((plan) => plan ? ({
+      ...plan,
+      exercises: plan.exercises.map((exercise, index) => index === exerciseIndex ? {
+        ...exercise,
+        sets: exercise.sets.map((set, rowIndex) => rowIndex === setIndex ? { ...set, [field]: value } : set)
+      } : exercise)
+    }) : plan);
+  }
+
+  function removePlanExercise(index) {
+    setPlanDraft((plan) => plan ? ({ ...plan, exercises: plan.exercises.filter((_exercise, exerciseIndex) => exerciseIndex !== index) }) : plan);
+  }
+
+  function removePlanSet(exerciseIndex, setIndex) {
+    setPlanDraft((plan) => removeSetFromPlan(plan, exerciseIndex, setIndex));
+  }
+
+  function addPlanSet(exerciseIndex) {
+    setPlanDraft((plan) => addSetToPlan(plan, exerciseIndex));
+  }
+
+  function addPlanExercise() {
+    setPlanDraft((plan) => plan ? ({
+      ...plan,
+      exercises: [...plan.exercises, { name: "", trackingType: "weighted", note: "", sets: [{ reps: "10", weight: "", duration: "" }] }]
+    }) : plan);
+  }
+
+  function hidePlan() {
+    const split = canonicalSplit(selectedSplit);
+    if (split) setHiddenSplits((current) => new Set([...current, split]));
+  }
+
+  function showPlan() {
+    const split = canonicalSplit(selectedSplit);
+    if (!split) return;
+    setHiddenSplits((current) => {
+      const next = new Set(current);
+      next.delete(split);
+      return next;
+    });
+  }
+
+  function showOriginalPlan() {
+    const split = canonicalSplit(selectedSplit);
+    const originalPlan = restoreSuggestedPlanForSplit(split);
+    if (!split || !originalPlan) return;
+    setPlanDraft(originalPlan);
+    setHiddenSplits((current) => {
+      const next = new Set(current);
+      next.delete(split);
+      return next;
+    });
+  }
+
+  async function acceptPlanExercise(index) {
+    const exercise = planDraft?.exercises?.[index];
+    if (!exercise) return;
+    const accepted = await acceptSuggestedPlan([exercise]);
+    if (accepted) {
+      setPlanDraft((plan) => {
+        if (!plan) return plan;
+        const remainingExercises = plan.exercises.filter((_exercise, exerciseIndex) => exerciseIndex !== index);
+        return remainingExercises.length ? { ...plan, exercises: remainingExercises } : null;
+      });
+    }
+  }
+
   return (
     <>
       <FocusStage className="workout-focus form">
@@ -922,6 +1175,14 @@ function WorkoutView({ selectedDate, selectedSplit, changeSplit, exerciseForm, s
             <button type="button" className="focus-action" onClick={() => setIsEditingType(true)}>Edit</button>
           ) : null}
         </div>
+        <div className="quick-split-buttons" aria-label="Quick workout templates">
+          {["Push", "Pull", "Legs"].map((type) => (
+            <button key={type} type="button" className={selectedSplit?.toLowerCase() === type.toLowerCase() ? "active" : ""} onClick={() => changeSplit(type)}>
+              {type}
+            </button>
+          ))}
+        </div>
+
         {isEditingType ? (
           <form className="form" onSubmit={saveWorkoutType}>
             <label>
@@ -975,6 +1236,43 @@ function WorkoutView({ selectedDate, selectedSplit, changeSplit, exerciseForm, s
           ) : null}
         </div>
       </FocusStage>
+
+      {showSuggestedPlan ? (
+        <SuggestedWorkoutPlan
+          plan={planDraft}
+          existingExerciseNames={existingExerciseNames}
+          exerciseNames={exerciseNames}
+          updateExercise={updatePlanExercise}
+          updateSet={updatePlanSet}
+          addSet={addPlanSet}
+          removeSet={removePlanSet}
+          removeExercise={removePlanExercise}
+          addExercise={addPlanExercise}
+          acceptExercise={acceptPlanExercise}
+          hidePlan={hidePlan}
+          showOriginalPlan={showOriginalPlan}
+          saving={saving}
+        />
+      ) : hasSuggestedPlan && isSuggestedPlanHidden ? (
+        <section className="panel-section suggested-plan-toggle">
+          <div>
+            <h2>{planDraft.title}</h2>
+            <p>Plan hidden. Show it when you want to continue your checklist.</p>
+          </div>
+          <div className="suggested-toggle-actions">
+            <button type="button" className="secondary" onClick={showOriginalPlan}>Reset Original Plan</button>
+            <button type="button" className="primary" onClick={showPlan}>Show Plan</button>
+          </div>
+        </section>
+      ) : canRestoreSuggestedPlan ? (
+        <section className="panel-section suggested-plan-toggle">
+          <div>
+            <h2>Suggested {selectedCanonicalSplit} Day</h2>
+            <p>Plan is empty. Reset it to bring back skipped exercises.</p>
+          </div>
+          <button type="button" className="primary" onClick={showOriginalPlan}><RefreshCw size={17} />Reset Original Plan</button>
+        </section>
+      ) : null}
 
       {isAddingExercise ? (
         <form className="panel-section form add-exercise-form" onSubmit={addExercise}>
@@ -1064,7 +1362,10 @@ function WorkoutView({ selectedDate, selectedSplit, changeSplit, exerciseForm, s
                     <div className="set-row" role="listitem" key={set.id}>
                       <span>{index + 1}</span>
                       <b>{formatSet(set, trackingType)}</b>
-                      <em>{set.is_pr ? "PR" : ""}</em>
+                      <em>{set.is_pr ? "NEW PR" : ""}</em>
+                      <button type="button" className="danger icon-only set-delete-button" onClick={() => deleteSet(set.id)} disabled={saving} aria-label={`Delete set ${index + 1} from ${exercise.name}`} title={`Delete set ${index + 1}`}>
+                        <Trash2 size={14} />
+                      </button>
                     </div>
                   ))}
                 </div>
@@ -1078,6 +1379,76 @@ function WorkoutView({ selectedDate, selectedSplit, changeSplit, exerciseForm, s
         </div>
       </section>
     </>
+  );
+}
+
+function SuggestedWorkoutPlan({ plan, existingExerciseNames, exerciseNames, updateExercise, updateSet, addSet, removeSet, removeExercise, addExercise, acceptExercise, hidePlan, showOriginalPlan, saving }) {
+  const canLogExercise = (exercise) => exercise.name.trim() && exercise.sets.some((set) => set.reps && set.weight !== "");
+
+  return (
+    <section className="panel-section suggested-plan">
+      <div className="daily-control-head suggested-plan-head">
+        <div>
+          <h2>{plan.title}</h2>
+          <p>{plan.description}</p>
+        </div>
+        <span className="badge">Log one by one</span>
+      </div>
+      <datalist id="suggested-exercise-options">
+        {exerciseNames.map((name) => <option key={name} value={name} />)}
+      </datalist>
+      <div className="suggested-plan-list">
+        {plan.exercises.map((exercise, exerciseIndex) => {
+          const alreadyLogged = existingExerciseNames.has(exercise.name.toLowerCase());
+          return (
+            <article className={`suggested-exercise ${alreadyLogged ? "already-logged" : ""}`} key={`${exercise.name || "new"}-${exerciseIndex}`}>
+              <div className="suggested-exercise-head">
+                <label>
+                  Exercise
+                  <input value={exercise.name} list="suggested-exercise-options" placeholder="Exercise name" onChange={(event) => updateExercise(exerciseIndex, { name: event.target.value })} />
+                </label>
+                <button type="button" className="danger icon-only" onClick={() => removeExercise(exerciseIndex)} disabled={plan.exercises.length === 1} aria-label={`Remove ${exercise.name || "exercise"}`} title={`Remove ${exercise.name || "exercise"}`}>
+                  <Trash2 size={16} />
+                </button>
+              </div>
+              <div className="target-set-grid">
+                {exercise.sets.map((set, setIndex) => (
+                  <div className="target-set-row" key={setIndex}>
+                    <span>{setIndex + 1}</span>
+                    <label>
+                      Reps
+                      <input type="number" min="1" inputMode="numeric" value={set.reps} onChange={(event) => updateSet(exerciseIndex, setIndex, "reps", event.target.value)} />
+                    </label>
+                    <label>
+                      Lbs
+                      <input type="number" min="0" step="2.5" inputMode="decimal" value={set.weight} onChange={(event) => updateSet(exerciseIndex, setIndex, "weight", event.target.value)} />
+                    </label>
+                    <button type="button" className="danger icon-only" onClick={() => removeSet(exerciseIndex, setIndex)} disabled={exercise.sets.length === 1} aria-label={`Remove target set ${setIndex + 1} from ${exercise.name || "exercise"}`} title={`Remove target set ${setIndex + 1}`}>
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <button type="button" className="secondary suggested-add-set" onClick={() => addSet(exerciseIndex)} disabled={saving}><Plus size={16} />Add Set</button>
+              {exercise.note || alreadyLogged ? (
+                <p className="suggested-note">
+                  {alreadyLogged ? "Already logged today. Logging this will add another copy unless you remove this suggestion. " : ""}{exercise.note}
+                </p>
+              ) : null}
+              <div className="suggested-exercise-actions">
+                <button type="button" className="primary" onClick={() => acceptExercise(exerciseIndex)} disabled={saving || !canLogExercise(exercise)}><Dumbbell size={17} />Log this exercise</button>
+                <button type="button" className="secondary" onClick={() => removeExercise(exerciseIndex)} disabled={saving}>Skip</button>
+              </div>
+            </article>
+          );
+        })}
+      </div>
+      <div className="suggested-plan-actions">
+        <button type="button" className="secondary" onClick={addExercise}><Plus size={17} />Add Exercise</button>
+        <button type="button" className="secondary" onClick={showOriginalPlan} disabled={saving}><RefreshCw size={17} />Reset Original Plan</button>
+        <button type="button" className="secondary" onClick={hidePlan} disabled={saving}>Hide Plan</button>
+      </div>
+    </section>
   );
 }
 
@@ -1367,58 +1738,6 @@ function formatCalendarSteps(steps) {
   const count = Number(steps || 0);
   if (count >= 1000) return `${(count / 1000).toFixed(1)}k`;
   return count.toLocaleString();
-}
-
-function buildMonthExport({ month, workouts, bodyLogs, userId }) {
-  const start = startOfMonth(month);
-  const end = new Date(start.getFullYear(), start.getMonth() + 1, 0);
-  const monthKey = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, "0")}`;
-  const workoutsByDate = new Map(workouts.map((workout) => [workout.workout_date, workout]));
-  const bodyLogsByDate = new Map(bodyLogs.map((entry) => [entry.log_date, entry]));
-  const days = Array.from({ length: end.getDate() }, (_item, index) => {
-    const day = addDays(start, index);
-    const key = dateKey(day);
-    const workout = workoutsByDate.get(key);
-    const bodyLog = bodyLogsByDate.get(key);
-    return {
-      date: key,
-      steps: workout?.steps ?? null,
-      weight_kg: bodyLog ? Number(bodyLog.weight) : null,
-      body_fat_percent: bodyLog?.body_fat == null ? null : Number(bodyLog.body_fat),
-      gym: hasWorkoutActivity(workout),
-      workout_type: workoutTypeForEdit(workout) || null,
-      workouts: (workout?.exercises || []).map((exercise) => ({
-        name: exercise.name,
-        tracking_type: exercise.tracking_type || "weighted",
-        sets: (exercise.exercise_sets || []).map((set) => ({
-          reps: set.reps,
-          weight_lbs: set.weight == null ? null : Number(set.weight),
-          duration_minutes: set.duration_minutes == null ? null : Number(set.duration_minutes),
-          is_pr: Boolean(set.is_pr),
-          logged_at: set.logged_at
-        }))
-      }))
-    };
-  });
-
-  return {
-    exported_at: new Date().toISOString(),
-    app: "fitness everything",
-    user_id: userId,
-    period: {
-      type: "month",
-      month: monthKey,
-      start_date: dateKey(start),
-      end_date: dateKey(end),
-      label: start.toLocaleDateString(undefined, { month: "long", year: "numeric" })
-    },
-    units: {
-      body_weight: "kg",
-      set_weight: "lbs",
-      time: "minutes"
-    },
-    days
-  };
 }
 
 function startOfMonth(date) {
