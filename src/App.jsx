@@ -851,7 +851,6 @@ function WorkoutView({ selectedDate, selectedSplit, changeSplit, exerciseForm, s
   const [isEditingSteps, setIsEditingSteps] = useState(false);
   const [typeDraft, setTypeDraft] = useState(selectedSplit);
   const [stepsDraft, setStepsDraft] = useState(selectedWorkout?.steps ?? "");
-  const workoutTypeTitle = selectedSplit ? workoutTypeLabel(selectedSplit) : "Workout Type";
 
   useEffect(() => {
     setIsEditingType(false);
@@ -901,14 +900,14 @@ function WorkoutView({ selectedDate, selectedSplit, changeSplit, exerciseForm, s
 
   return (
     <>
-      <section className="panel-section form">
+      <FocusStage className="workout-focus form">
         <div className="daily-control-head">
           <div>
-            <h2>{workoutTypeTitle}</h2>
-            <p>{selectedSplit ? selectedDate === todayKey() ? "Today" : formatLongDate(selectedDate) : `No type set for ${selectedDate === todayKey() ? "today" : formatLongDate(selectedDate)}`}</p>
+            <span className="stage-label">{selectedDate === todayKey() ? "Active session" : formatLongDate(selectedDate)}</span>
+            <h2 className="workout-title">{selectedSplit ? workoutTypeLabel(selectedSplit) : "Set workout type"}</h2>
           </div>
           {!isEditingType ? (
-            <button type="button" className="secondary mini" onClick={() => setIsEditingType(true)}>Edit</button>
+            <button type="button" className="focus-action" onClick={() => setIsEditingType(true)}>Edit</button>
           ) : null}
         </div>
         {isEditingType ? (
@@ -963,10 +962,10 @@ function WorkoutView({ selectedDate, selectedSplit, changeSplit, exerciseForm, s
             </form>
           ) : null}
         </div>
-      </section>
+      </FocusStage>
 
       {isAddingExercise ? (
-        <form className="panel-section form" onSubmit={addExercise}>
+        <form className="panel-section form add-exercise-form" onSubmit={addExercise}>
           <div className="daily-control-head">
             <div>
               <h2>Add Exercise</h2>
@@ -1025,7 +1024,7 @@ function WorkoutView({ selectedDate, selectedSplit, changeSplit, exerciseForm, s
           <button className="primary" disabled={saving}><Plus size={18} />Add Exercise</button>
         </form>
       ) : (
-        <section className="panel-section add-exercise-prompt">
+        <section className="add-exercise-bar">
           <button type="button" className="primary add-exercise-toggle" onClick={() => setIsAddingExercise(true)}>
             <Plus size={18} />Add Exercise
           </button>
@@ -1033,14 +1032,14 @@ function WorkoutView({ selectedDate, selectedSplit, changeSplit, exerciseForm, s
       )}
 
       <section className="panel-section">
-        <h2>{selectedDate === todayKey() ? "Today's Workout" : `${formatLongDate(selectedDate)} Workout`}</h2>
+        <h2>Exercises</h2>
         <div className="exercise-list">
           {selectedWorkout?.exercises?.length ? selectedWorkout.exercises.map((exercise) => {
             const trackingType = exercise.tracking_type || "weighted";
             const previous = bestBefore(exercise.name, trackingType, selectedDate);
             const prCount = exercise.exercise_sets.filter((set) => set.is_pr).length;
             return (
-              <article className="exercise-card" key={exercise.id}>
+              <article className="exercise-card exercise-record" key={exercise.id}>
                 <div className="exercise-head">
                   <div>
                     <h3>{exercise.name}</h3>
@@ -1048,12 +1047,12 @@ function WorkoutView({ selectedDate, selectedSplit, changeSplit, exerciseForm, s
                   </div>
                   {prCount ? <span className="badge">PR</span> : null}
                 </div>
-                <div className="sets">
+                <div className="sets" role="list" aria-label={`${exercise.name} sets`}>
                   {exercise.exercise_sets.map((set, index) => (
-                    <div className="set-row" key={set.id}>
+                    <div className="set-row" role="listitem" key={set.id}>
                       <span>{index + 1}</span>
                       <b>{formatSet(set, trackingType)}</b>
-                      <em>{set.is_pr ? "NEW PR" : ""}</em>
+                      <em>{set.is_pr ? "PR" : ""}</em>
                     </div>
                   ))}
                 </div>

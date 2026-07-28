@@ -927,7 +927,7 @@ select:focus {
   grid-template-columns: 1fr auto;
   gap: 10px;
   align-items: start;
-  padding: 12px 14px;
+  padding: 11px 12px;
   border-bottom: 1px solid var(--line-soft);
 }
 
@@ -947,8 +947,8 @@ select:focus {
 
 .sets {
   display: grid;
-  gap: 6px;
-  padding: 12px 14px;
+  gap: 0;
+  padding: 4px 12px 8px;
 }
 
 .set-row {
@@ -956,7 +956,12 @@ select:focus {
   grid-template-columns: auto 1fr auto;
   gap: 10px;
   align-items: center;
-  min-height: 32px;
+  min-height: 34px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.set-row:last-child {
+  border-bottom: 0;
 }
 
 .set-row span:first-child,
@@ -1012,27 +1017,62 @@ select:focus {
 
 .set-input-row {
   display: grid;
-  grid-template-columns: auto 1fr 1fr auto;
-  gap: 8px;
+  grid-template-columns: 28px minmax(0, 1fr) minmax(0, 1fr) 36px;
+  gap: 6px;
   align-items: end;
   border: 1px solid var(--line-soft);
   border-radius: 6px;
-  padding: 9px;
+  padding: 7px;
   background: var(--surface);
 }
 
 .set-input-row.bodyweight,
 .set-input-row.time {
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: 28px minmax(0, 1fr) 36px;
 }
 
 .set-input-row > span {
-  width: 30px;
+  width: 28px;
   height: 42px;
 }
 
-.add-exercise-prompt {
-  padding: 10px;
+.workout-title {
+  margin-top: 5px;
+  font-size: 1.6rem;
+}
+
+.focus-action {
+  min-height: 32px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 6px;
+  padding: 0 11px;
+  background: transparent;
+  color: var(--focus-text);
+}
+
+.workout-focus input {
+  border-color: rgba(255, 255, 255, 0.16);
+  background: var(--focus-raised);
+  color: var(--focus-text);
+}
+
+.workout-focus input::placeholder {
+  color: var(--focus-muted);
+}
+
+.workout-focus .primary {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.workout-focus .secondary {
+  border-color: rgba(255, 255, 255, 0.16);
+  background: var(--focus-raised);
+  color: var(--focus-text);
+}
+
+.add-exercise-bar {
+  margin-bottom: 12px;
 }
 
 .add-exercise-toggle {
@@ -1042,7 +1082,7 @@ select:focus {
 .workout-steps {
   display: grid;
   gap: 10px;
-  border-top: 1px solid var(--line-soft);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
   padding-top: 14px;
 }
 
@@ -1445,18 +1485,20 @@ select:focus {
     grid-template-columns: 1fr;
   }
 
+  .trend-meta {
+    gap: 20px;
+  }
+}
+
+@media (max-width: 350px) {
   .set-input-row,
   .set-input-row.bodyweight,
   .set-input-row.time {
-    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-columns: 28px minmax(0, 1fr) 36px;
   }
 
   .set-input-row.weighted label:nth-of-type(2) {
     grid-column: 2 / 3;
-  }
-
-  .trend-meta {
-    gap: 20px;
   }
 }
 
