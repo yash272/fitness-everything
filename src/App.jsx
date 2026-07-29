@@ -3,6 +3,7 @@ import { Activity, CalendarDays, CalendarRange, ChevronLeft, ChevronRight, Downl
 import { createRootScreen, createWorkoutScreen, screenStorageValue } from "./appState";
 import AppHeader from "./AppHeader";
 import { buildFitnessExport, exportFilename } from "./exportData";
+import HistoryView from "./HistoryView";
 import { normalizeStepsInput, normalizeWeightInput } from "./quickLogUtils";
 import SuggestedWorkoutPlan from "./SuggestedWorkoutPlan";
 import TodayView from "./TodayView";
@@ -59,6 +60,8 @@ function Tracker() {
   const [workoutDate, setWorkoutDate] = useState(todayKey());
   const [calendarMonth, setCalendarMonth] = useState(startOfMonth(new Date()));
   const [calendarMode, setCalendarMode] = useState(() => localStorage.getItem("fitness-calendar-mode") === "month" ? "month" : "week");
+  const [historyFilter, setHistoryFilter] = useState(() => localStorage.getItem("fitness-history-filter") || "All");
+  const [isHistoryCalendarOpen, setIsHistoryCalendarOpen] = useState(() => localStorage.getItem("fitness-history-calendar-open") === "true");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [isWorkoutDatePickerOpen, setIsWorkoutDatePickerOpen] = useState(false);
@@ -78,6 +81,11 @@ function Tracker() {
   useEffect(() => {
     localStorage.setItem("fitness-calendar-mode", calendarMode);
   }, [calendarMode]);
+
+  useEffect(() => {
+    localStorage.setItem("fitness-history-filter", historyFilter);
+    localStorage.setItem("fitness-history-calendar-open", String(isHistoryCalendarOpen));
+  }, [historyFilter, isHistoryCalendarOpen]);
 
   useEffect(() => {
     localStorage.setItem("fitness-active-view", screenStorageValue(screen));
@@ -648,15 +656,23 @@ function Tracker() {
         )}
 
         {!loading && activeView === "daily" && (
-          <DailyView
+          <HistoryView
             workouts={workouts}
             bodyLogs={bodyLogs}
-            selectedDate={logDate}
-            setSelectedDate={selectLogDate}
-            calendarMonth={calendarMonth}
-            setCalendarMonth={setCalendarMonth}
+            filter={historyFilter}
+            onFilterChange={setHistoryFilter}
+            calendarOpen={isHistoryCalendarOpen}
+            onCalendarOpenChange={setIsHistoryCalendarOpen}
             calendarMode={calendarMode}
-            setCalendarMode={setCalendarMode}
+            onCalendarModeChange={setCalendarMode}
+            calendarMonth={calendarMonth}
+            onCalendarMonthChange={setCalendarMonth}
+            selectedDate={logDate}
+            onSelectedDateChange={selectLogDate}
+            onOpenWorkout={(date) => {
+              setWorkoutDate(date);
+              setScreen(createWorkoutScreen(date, "history"));
+            }}
           />
         )}
 
