@@ -7,7 +7,7 @@ import { normalizeStepsInput, normalizeWeightInput } from "./quickLogUtils";
 import SuggestedWorkoutPlan from "./SuggestedWorkoutPlan";
 import TodayView from "./TodayView";
 import { buildProgressivePlanForSplit, canonicalSplit, shouldShowSuggestedPlan, suggestedPlanDraftStorageKey, suggestedPlanHiddenStorageKey } from "./workoutPlan";
-import { addSetToPlan, removeSetFromPlan, removeSetFromWorkouts } from "./workoutMutations";
+import { addSetToPlan, removeSetFromPlan, removeSetFromWorkouts, upsertSetInWorkouts } from "./workoutMutations";
 import { isSupabaseConfigured, supabase } from "./supabaseClient";
 import { hasWorkoutActivity, toggleWorkoutType, workoutActivityFlag, workoutStageLabel, workoutStatusLabel, workoutTypeForEdit, workoutTypeLabel } from "./workoutDisplayUtils";
 
@@ -324,6 +324,87 @@ function Tracker() {
     }
   }
 
+  async function saveStrengthSet({ date, split, exercise, set }) {
+    const trackingType = exercise.trackingType || exercise.tracking_type || "weighted";
+    const normalized = normalizeSetInput(set, trackingType);
+    if (!normalized) return null;
+
+    setSaving(true);
+    setNotice("");
+    try {
+      const workout = await ensureWorkoutForDate(date, split, { did_workout: true });
+      let persistedExercise = (workout.exercises || []).find(
+        (item) => item.name.trim().toLowerCase() === exercise.name.trim().toLowerCase()
+      );
+
+      if (!persistedExercise) {
+        const { data, error } = await supabase
+          .from("exercises")
+          .insert({
+            workout_id: workout.id,
+            user_id: userId,
+            name: exercise.name.trim(),
+            tracking_type: trackingType
+          })
+          .select("id,user_id,name,tracking_type,created_at")
+          .single();
+        if (error) throw error;
+        persistedExercise = { ...data, exercise_sets: [] };
+      }
+
+      const previous = bestBefore(exercise.name, trackingType, date);
+      const payload = {
+        ...normalized,
+        is_pr: Boolean(previous) && isBetterSet(normalized, previous, trackingType)
+      };
+      const query = set.id
+        ? supabase.from("exercise_sets").update(payload).eq("id", set.id)
+        : supabase.from("exercise_sets").insert({
+          exercise_id: persistedExercise.id,
+          user_id: userId,
+          ...payload
+        });
+      const { data: savedSet, error: setError } = await query
+        .select("id,user_id,reps,weight,duration_minutes,is_pr,logged_at")
+        .single();
+      if (setError) throw setError;
+
+      setWorkouts((items) => upsertSetInWorkouts(items, workout.id, persistedExercise, savedSet));
+      return savedSet;
+    } catch (error) {
+      setNotice(error.message);
+      return null;
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function saveTimedActivity({ date, name, duration }) {
+    const saved = await saveStrengthSet({
+      date,
+      split: name,
+      exercise: { name, trackingType: "time" },
+      set: { duration }
+    });
+    return Boolean(saved);
+  }
+
+  async function clearWorkoutType(date) {
+    const workout = workouts.find((item) => item.workout_date === date);
+    const hasSets = workout?.exercises?.some((exercise) => exercise.exercise_sets?.length);
+    if (hasSets) {
+      setNotice("Remove the logged sets before clearing this session.");
+      return false;
+    }
+    try {
+      await ensureWorkoutForDate(date, "", { did_workout: false });
+      return true;
+    } catch (error) {
+      setNotice(error.message);
+      return false;
+    }
+  }
+
   async function repeatSet(exercise) {
     const last = exercise.exercise_sets?.at(-1);
     if (!last) return;
@@ -596,6 +677,9 @@ function Tracker() {
             deleteSet={deleteSet}
             deleteExercise={deleteExercise}
             acceptSuggestedPlan={acceptSuggestedPlan}
+            saveStrengthSet={saveStrengthSet}
+            saveTimedActivity={saveTimedActivity}
+            clearWorkoutType={clearWorkoutType}
             saving={saving}
           />
         )}
