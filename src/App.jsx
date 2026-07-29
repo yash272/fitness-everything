@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Activity, BarChart3, Bolt, CalendarDays, CalendarRange, ChevronLeft, ChevronRight, Download, Dumbbell, Moon, Plus, RefreshCw, Scale, Sun, Trash2 } from "lucide-react";
+import { createRootScreen, createWorkoutScreen, screenStorageValue } from "./appState";
 import { buildFitnessExport, exportFilename } from "./exportData";
 import SuggestedWorkoutPlan from "./SuggestedWorkoutPlan";
 import { buildProgressivePlanForSplit, canonicalSplit, shouldShowSuggestedPlan, suggestedPlanDraftStorageKey, suggestedPlanHiddenStorageKey } from "./workoutPlan";
@@ -42,10 +43,11 @@ function App() {
 
 function Tracker() {
   const userId = import.meta.env.VITE_PERSONAL_USER_ID;
-  const [activeView, setActiveView] = useState(() => {
+  const [screen, setScreen] = useState(() => {
     const saved = localStorage.getItem("fitness-active-view");
-    return ["dashboard", "daily", "workout", "body"].includes(saved) ? saved : "dashboard";
+    return createRootScreen(saved === "daily" || saved === "history" ? "history" : "today");
   });
+  const activeView = screen.name === "history" ? "daily" : screen.name === "workout" ? "workout" : "dashboard";
   const [theme, setTheme] = useState(() => localStorage.getItem("fitness-theme") || "light");
   const [range, setRange] = useState(30);
   const [workouts, setWorkouts] = useState([]);
@@ -76,8 +78,8 @@ function Tracker() {
   }, [calendarMode]);
 
   useEffect(() => {
-    localStorage.setItem("fitness-active-view", activeView);
-  }, [activeView]);
+    localStorage.setItem("fitness-active-view", screenStorageValue(screen));
+  }, [screen]);
 
   useEffect(() => {
     const resetScroll = () => {
@@ -213,6 +215,9 @@ function Tracker() {
       return;
     }
     setWorkoutDate(date);
+    if (screen.name === "workout") {
+      setScreen(createWorkoutScreen(date, screen.returnTo));
+    }
     setIsWorkoutDatePickerOpen(false);
   }
 
@@ -222,7 +227,12 @@ function Tracker() {
       setNotice(FUTURE_WORKOUT_NOTICE);
       setWorkoutDate(todayKey());
     }
-    setActiveView(view);
+    if (view === "workout") {
+      const returnTo = screen.name === "history" ? "history" : screen.returnTo || "today";
+      setScreen(createWorkoutScreen(workoutDate, returnTo));
+      return;
+    }
+    setScreen(createRootScreen(view === "daily" ? "history" : "today"));
   }
 
   function bestBefore(exerciseName, trackingType = "weighted", beforeDate = todayKey()) {
