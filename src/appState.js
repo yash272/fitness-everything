@@ -29,3 +29,27 @@ export function screenStorageValue(screen) {
   }
   return screen?.name === "history" ? "history" : "today";
 }
+
+export function historyStateForScreen(screen, currentState = {}) {
+  return {
+    ...(currentState && typeof currentState === "object" ? currentState : {}),
+    fitnessScreen: screen
+  };
+}
+
+export function screenFromHistoryState(state) {
+  const screen = state?.fitnessScreen;
+  if (screen?.name === "today" || screen?.name === "history") {
+    return createRootScreen(screen.name);
+  }
+  if (screen?.name === "workout" && /^\d{4}-\d{2}-\d{2}$/.test(screen.date || "")) {
+    return createWorkoutScreen(screen.date, screen.returnTo);
+  }
+  return null;
+}
+
+export function screensMatch(left, right) {
+  if (left?.name !== right?.name) return false;
+  if (left?.name !== "workout") return true;
+  return left.date === right.date && left.returnTo === right.returnTo;
+}

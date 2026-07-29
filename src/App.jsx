@@ -1,6 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Activity, CalendarDays, CalendarRange, ChevronLeft, ChevronRight, Download, Dumbbell, Plus, RefreshCw, Trash2 } from "lucide-react";
-import { createRootScreen, createWorkoutScreen, screenStorageValue } from "./appState";
+import {
+  createRootScreen,
+  createWorkoutScreen,
+  historyStateForScreen,
+  screenFromHistoryState,
+  screensMatch,
+  screenStorageValue
+} from "./appState";
 import AppHeader from "./AppHeader";
 import { buildFitnessExport, exportFilename } from "./exportData";
 import HistoryView from "./HistoryView";
@@ -49,7 +56,8 @@ function Tracker() {
   const userId = import.meta.env.VITE_PERSONAL_USER_ID;
   const [screen, setScreen] = useState(() => {
     const saved = localStorage.getItem("fitness-active-view");
-    return createRootScreen(saved === "daily" || saved === "history" ? "history" : "today");
+    const savedScreen = createRootScreen(saved === "daily" || saved === "history" ? "history" : "today");
+    return screenFromHistoryState(window.history.state) || savedScreen;
   });
   const activeView = screen.name === "history" ? "daily" : screen.name === "workout" ? "workout" : "dashboard";
   const [theme, setTheme] = useState(() => localStorage.getItem("fitness-theme") || "light");
@@ -57,7 +65,7 @@ function Tracker() {
   const [workouts, setWorkouts] = useState([]);
   const [bodyLogs, setBodyLogs] = useState([]);
   const [logDate, setLogDate] = useState(todayKey());
-  const [workoutDate, setWorkoutDate] = useState(todayKey());
+  const [workoutDate, setWorkoutDate] = useState(() => screen.name === "workout" ? screen.date : todayKey());
   const [calendarMonth, setCalendarMonth] = useState(startOfMonth(new Date()));
   const [calendarMode, setCalendarMode] = useState(() => localStorage.getItem("fitness-calendar-mode") === "month" ? "month" : "week");
   const [historyFilter, setHistoryFilter] = useState(() => localStorage.getItem("fitness-history-filter") || "All");
@@ -72,6 +80,33 @@ function Tracker() {
   const [isExportOptionsOpen, setIsExportOptionsOpen] = useState(false);
   const [exportMonth, setExportMonth] = useState(() => dateKey(startOfMonth(new Date())).slice(0, 7));
   const workoutDateInputRef = useRef(null);
+  const initialScreenRef = useRef(screen);
+
+  useEffect(() => {
+    window.history.replaceState(
+      historyStateForScreen(initialScreenRef.current, window.history.state),
+      ""
+    );
+
+    const handlePopState = (event) => {
+      const previousScreen = screenFromHistoryState(event.state);
+      if (!previousScreen) return;
+      setScreen(previousScreen);
+      if (previousScreen.name === "workout") setWorkoutDate(previousScreen.date);
+      setIsWorkoutDatePickerOpen(false);
+      setIsExportOptionsOpen(false);
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
+  const navigateTo = useCallback((nextScreen, { replace = false } = {}) => {
+    if (screensMatch(screen, nextScreen)) return;
+    const nextState = historyStateForScreen(nextScreen, window.history.state);
+    window.history[replace ? "replaceState" : "pushState"](nextState, "");
+    setScreen(nextScreen);
+  }, [screen]);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -211,7 +246,7 @@ function Tracker() {
     }
     setWorkoutDate(date);
     if (screen.name === "workout") {
-      setScreen(createWorkoutScreen(date, screen.returnTo));
+      navigateTo(createWorkoutScreen(date, screen.returnTo), { replace: true });
     }
     setIsWorkoutDatePickerOpen(false);
   }
@@ -592,9 +627,9 @@ function Tracker() {
         isMenuOpen={isExportOptionsOpen}
         exportMonth={exportMonth}
         onExportMonthChange={setExportMonth}
-        onOpenToday={() => setScreen(createRootScreen("today"))}
-        onOpenHistory={() => setScreen(createRootScreen("history"))}
-        onBack={() => setScreen(createRootScreen(screen.returnTo))}
+        onOpenToday={() => navigateTo(createRootScreen("today"))}
+        onOpenHistory={() => navigateTo(createRootScreen("history"))}
+        onBack={() => window.history.back()}
         onToggleMenu={() => setIsExportOptionsOpen((open) => !open)}
         onToggleTheme={() => {
           setTheme((current) => current === "dark" ? "light" : "dark");
@@ -649,7 +684,7 @@ function Tracker() {
             onSaveSteps={saveDailyLog}
             onOpenWorkout={(date) => {
               setWorkoutDate(date);
-              setScreen(createWorkoutScreen(date, "today"));
+              navigateTo(createWorkoutScreen(date, "today"));
             }}
             saving={saving}
           />
@@ -671,7 +706,7 @@ function Tracker() {
             onSelectedDateChange={selectLogDate}
             onOpenWorkout={(date) => {
               setWorkoutDate(date);
-              setScreen(createWorkoutScreen(date, "history"));
+              navigateTo(createWorkoutScreen(date, "history"));
             }}
           />
         )}
