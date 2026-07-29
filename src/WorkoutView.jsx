@@ -82,7 +82,7 @@ export default function WorkoutView({
           name={selectedSplit}
           duration={durationSet?.duration_minutes}
           saving={saving}
-          onSave={(duration) => onSaveActivity({ date, name: selectedSplit, duration })}
+          onSave={(duration) => onSaveActivity({ date, name: selectedSplit, duration, setId: durationSet?.id })}
         />
       ) : (
         <section className="rest-session">

@@ -13,4 +13,5 @@ test("Workout is a focused session instead of a suggestion panel", () => {
   assert.equal(strengthSource.includes("Previous"), true);
   assert.equal(strengthSource.includes("Today"), true);
   assert.equal(strengthSource.includes("New best"), true);
+  assert.equal(workoutSource.includes("setId: durationSet?.id"), true);
 });

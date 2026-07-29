@@ -388,12 +388,12 @@ function Tracker() {
     }
   }
 
-  async function saveTimedActivity({ date, name, duration }) {
+  async function saveTimedActivity({ date, name, duration, setId }) {
     const saved = await saveStrengthSet({
       date,
       split: name,
       exercise: { name, trackingType: "time" },
-      set: { duration }
+      set: { id: setId, duration }
     });
     return Boolean(saved);
   }
