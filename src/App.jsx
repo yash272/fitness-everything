@@ -826,17 +826,7 @@ function DailyView({ workouts, bodyLogs, selectedDate, setSelectedDate, calendar
             selectedDate={selectedDate}
             setSelectedDate={setSelectedDate}
           />
-        ) : null}
-      </section>
-
-      <FocusStage className="log-focus">
-        <span className="stage-label">{formatLongDate(selectedDate)}</span>
-        <h2>Workout</h2>
-        <DayWorkoutDetails workout={selectedLog} bodyLog={selectedBodyLog} />
-      </FocusStage>
-
-      {calendarMode === "month" ? (
-        <section className="panel-section month-calendar-panel">
+        ) : (
           <CalendarGrid
             month={calendarMonth}
             workouts={workouts}
@@ -844,8 +834,14 @@ function DailyView({ workouts, bodyLogs, selectedDate, setSelectedDate, calendar
             selectedDate={selectedDate}
             setSelectedDate={setSelectedDate}
           />
-        </section>
-      ) : null}
+        )}
+      </section>
+
+      <FocusStage className="log-focus">
+        <span className="stage-label">{formatLongDate(selectedDate)}</span>
+        <h2>Workout</h2>
+        <DayWorkoutDetails workout={selectedLog} bodyLog={selectedBodyLog} />
+      </FocusStage>
     </>
   );
 }
