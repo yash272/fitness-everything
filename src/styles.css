@@ -2011,6 +2011,450 @@ select:focus {
   }
 }
 
+/* ---------- Focused workout ---------- */
+
+.view-workout {
+  width: min(100%, 860px);
+}
+
+.focused-workout {
+  display: grid;
+  gap: 14px;
+}
+
+.session-type-band {
+  display: grid;
+  gap: 14px;
+  padding: 2px 0 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.session-type-band > div:first-child {
+  display: grid;
+  gap: 2px;
+}
+
+.session-type-band > div:first-child span {
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.session-type-band > div:first-child h2 {
+  font-size: 1.45rem;
+}
+
+.session-type-choices {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.session-type-choices button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 42px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 650;
+}
+
+.session-type-choices button.active {
+  border-color: var(--accent-line);
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.custom-session-type,
+.add-session-exercise {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 42px;
+  gap: 6px;
+}
+
+.custom-session-type input,
+.add-session-exercise input {
+  min-width: 0;
+  height: 42px;
+  padding: 0 11px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+}
+
+.custom-session-type button,
+.add-session-exercise button {
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  background: var(--surface-low);
+  color: var(--text);
+}
+
+.strength-session {
+  display: grid;
+  gap: 10px;
+}
+
+.session-progress {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 4px 0;
+  color: var(--muted);
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.72rem;
+}
+
+.session-progress > div {
+  overflow: hidden;
+  height: 3px;
+  background: var(--surface-low);
+}
+
+.session-progress i {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transition: width 240ms ease;
+}
+
+.strength-exercises {
+  border-top: 1px solid var(--line);
+}
+
+.session-exercise {
+  border-bottom: 1px solid var(--line);
+}
+
+.session-exercise-summary {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) 20px;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 68px;
+  padding: 10px 2px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+}
+
+.session-exercise-summary > span:first-child {
+  color: var(--faint);
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.7rem;
+}
+
+.session-exercise-summary > span:nth-child(2) {
+  display: grid;
+  gap: 3px;
+}
+
+.session-exercise-summary strong {
+  overflow-wrap: anywhere;
+  font-size: 0.94rem;
+}
+
+.session-exercise-summary small {
+  color: var(--muted);
+  font-size: 0.7rem;
+}
+
+.session-exercise.active .session-exercise-summary {
+  color: var(--accent-text);
+}
+
+.session-exercise-body {
+  padding: 0 0 14px 42px;
+}
+
+.set-rail-head,
+.paired-set-row {
+  display: grid;
+  grid-template-columns: 28px minmax(90px, 0.9fr) minmax(190px, 1.5fr) 42px;
+  gap: 8px;
+}
+
+.set-rail-head {
+  align-items: center;
+  min-height: 32px;
+  color: var(--faint);
+  font-size: 0.65rem;
+  text-transform: uppercase;
+}
+
+.set-rail-head strong {
+  color: var(--muted);
+  font-size: inherit;
+}
+
+.paired-set-list {
+  border-top: 1px solid var(--line-soft);
+}
+
+.paired-set-row {
+  align-items: center;
+  min-height: 72px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.paired-set-row > span:first-child {
+  color: var(--faint);
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.72rem;
+}
+
+.previous-set {
+  display: grid;
+  gap: 2px;
+}
+
+.previous-set b {
+  color: var(--muted);
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.78rem;
+  font-weight: 500;
+}
+
+.previous-set small {
+  color: var(--faint);
+  font-size: 0.62rem;
+}
+
+.today-set {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.today-set label {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 3px;
+  padding: 4px 7px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--surface);
+}
+
+.today-set input {
+  min-width: 0;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.86rem;
+}
+
+.today-set label span {
+  color: var(--faint);
+  font-size: 0.58rem;
+}
+
+.today-set em {
+  grid-column: 1 / -1;
+  color: var(--accent-text);
+  font-size: 0.65rem;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.today-set.empty {
+  color: var(--faint);
+  font-size: 0.72rem;
+}
+
+.set-actions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 3px;
+}
+
+.set-actions button {
+  display: grid;
+  width: 34px;
+  height: 30px;
+  place-items: center;
+  border-radius: 5px;
+}
+
+.confirm-set {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.confirm-set.saved {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+
+.delete-set {
+  background: transparent;
+  color: var(--danger);
+}
+
+.exercise-inline-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 10px;
+}
+
+.exercise-inline-actions button {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 2px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.exercise-inline-actions .danger-text {
+  color: var(--danger);
+}
+
+.add-session-exercise {
+  margin-top: 4px;
+}
+
+.activity-session,
+.rest-session {
+  min-height: 200px;
+  border-block: 1px solid var(--line);
+}
+
+.activity-session {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) minmax(130px, 0.55fr);
+  align-items: center;
+  gap: 14px;
+  padding: 22px 2px;
+}
+
+.activity-session-icon {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  place-items: center;
+  border-radius: 7px;
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.activity-session > div:nth-child(2) {
+  display: grid;
+  gap: 3px;
+}
+
+.activity-session > div:nth-child(2) span {
+  color: var(--muted);
+  font-size: 0.7rem;
+}
+
+.activity-session > div:nth-child(2) strong {
+  font-size: 1.1rem;
+}
+
+.activity-session label {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 18px;
+  align-items: center;
+  gap: 6px;
+}
+
+.activity-session input {
+  min-width: 0;
+  padding: 8px 0;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
+  color: var(--text);
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 1.2rem;
+  text-align: right;
+}
+
+.activity-session label span {
+  color: var(--muted);
+  font-size: 0.7rem;
+}
+
+.rest-session {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 7px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.rest-session h2 {
+  font-size: 1.1rem;
+}
+
+.rest-session p {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+@media (max-width: 620px) {
+  .session-type-choices {
+    display: flex;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    scrollbar-width: none;
+  }
+
+  .session-type-choices button {
+    flex: 0 0 auto;
+    min-width: 82px;
+  }
+
+  .session-exercise-body {
+    padding-left: 0;
+  }
+
+  .set-rail-head,
+  .paired-set-row {
+    grid-template-columns: 22px minmax(72px, 0.75fr) minmax(142px, 1.35fr) 34px;
+    gap: 5px;
+  }
+
+  .today-set {
+    gap: 4px;
+  }
+
+  .today-set label {
+    padding-inline: 5px;
+  }
+
+  .activity-session {
+    grid-template-columns: 42px minmax(0, 1fr);
+  }
+
+  .activity-session-icon {
+    width: 42px;
+    height: 42px;
+  }
+
+  .activity-session label {
+    grid-column: 1 / -1;
+  }
+}
+
 @media (max-width: 350px) {
   .set-input-row,
   .set-input-row.bodyweight,

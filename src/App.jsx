@@ -6,6 +6,7 @@ import { buildFitnessExport, exportFilename } from "./exportData";
 import { normalizeStepsInput, normalizeWeightInput } from "./quickLogUtils";
 import SuggestedWorkoutPlan from "./SuggestedWorkoutPlan";
 import TodayView from "./TodayView";
+import WorkoutView from "./WorkoutView";
 import { buildProgressivePlanForSplit, canonicalSplit, shouldShowSuggestedPlan, suggestedPlanDraftStorageKey, suggestedPlanHiddenStorageKey } from "./workoutPlan";
 import { addSetToPlan, removeSetFromPlan, removeSetFromWorkouts, upsertSetInWorkouts } from "./workoutMutations";
 import { isSupabaseConfigured, supabase } from "./supabaseClient";
@@ -390,6 +391,7 @@ function Tracker() {
   }
 
   async function clearWorkoutType(date) {
+    setIsWorkoutDatePickerOpen(false);
     const workout = workouts.find((item) => item.workout_date === date);
     const hasSets = workout?.exercises?.some((exercise) => exercise.exercise_sets?.length);
     if (hasSets) {
@@ -501,6 +503,7 @@ function Tracker() {
   }
 
   async function changeSplit(split) {
+    setIsWorkoutDatePickerOpen(false);
     try {
       const nextSplit = workoutTypeLabel(split);
       await ensureWorkoutForDate(workoutDate, nextSplit, {
@@ -605,7 +608,7 @@ function Tracker() {
                 </button>
                 {isWorkoutDatePickerOpen ? (
                   <div className="date-popover">
-                    <input ref={workoutDateInputRef} type="date" value={workoutDate} max={todayKey()} onChange={(event) => selectWorkoutDate(event.target.value)} onKeyDown={(event) => {
+                    <input ref={workoutDateInputRef} type="date" value={workoutDate} max={todayKey()} onInput={(event) => selectWorkoutDate(event.target.value)} onKeyDown={(event) => {
                       if (event.key === "Escape") setIsWorkoutDatePickerOpen(false);
                     }} aria-label="Workout date" />
                   </div>
@@ -659,17 +662,24 @@ function Tracker() {
 
         {!loading && activeView === "workout" && (
           <WorkoutView
-            selectedDate={workoutDate}
+            date={workoutDate}
             selectedSplit={workoutTypeForEdit(selectedWorkout)}
+            workout={selectedWorkout}
             workouts={workouts}
-            changeSplit={changeSplit}
+            workoutTypes={workoutTypes}
+            saving={saving}
+            onChangeType={changeSplit}
+            onClearType={() => clearWorkoutType(workoutDate)}
+            onSaveSet={saveStrengthSet}
+            onSaveActivity={saveTimedActivity}
+            onDeleteSet={deleteSet}
+            onDeleteExercise={deleteExercise}
             exerciseForm={exerciseForm}
             setExerciseForm={setExerciseForm}
             isAddingExercise={isAddingExercise}
             setIsAddingExercise={setIsAddingExercise}
             addExercise={addExercise}
             exerciseNames={exerciseNames}
-            workoutTypes={workoutTypes}
             selectedWorkout={selectedWorkout}
             saveDailyLog={saveDailyLog}
             bestBefore={bestBefore}
@@ -680,7 +690,6 @@ function Tracker() {
             saveStrengthSet={saveStrengthSet}
             saveTimedActivity={saveTimedActivity}
             clearWorkoutType={clearWorkoutType}
-            saving={saving}
           />
         )}
 
@@ -914,7 +923,7 @@ function saveHiddenSplits(selectedDate, hiddenSplits) {
   }
 }
 
-function WorkoutView({ selectedDate, selectedSplit, workouts, changeSplit, exerciseForm, setExerciseForm, isAddingExercise, setIsAddingExercise, addExercise, exerciseNames, workoutTypes, selectedWorkout, saveDailyLog, bestBefore, repeatSet, deleteSet, deleteExercise, acceptSuggestedPlan, saving }) {
+function LegacyWorkoutView({ selectedDate, selectedSplit, workouts, changeSplit, exerciseForm, setExerciseForm, isAddingExercise, setIsAddingExercise, addExercise, exerciseNames, workoutTypes, selectedWorkout, saveDailyLog, bestBefore, repeatSet, deleteSet, deleteExercise, acceptSuggestedPlan, saving }) {
   const [isEditingType, setIsEditingType] = useState(false);
   const [isEditingSteps, setIsEditingSteps] = useState(false);
   const [typeDraft, setTypeDraft] = useState(selectedSplit);
