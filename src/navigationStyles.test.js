@@ -5,7 +5,10 @@ import { readFileSync } from "node:fs";
 const appSource = readFileSync(new URL("./App.jsx", import.meta.url), "utf8");
 const styles = readFileSync(new URL("./styles.css", import.meta.url), "utf8");
 
-test("all navigation tabs use the same selected-state styling", () => {
-  assert.equal(appSource.includes("workout-tab"), false);
-  assert.equal(styles.includes(".workout-tab"), false);
+test("the app uses a focused shell without bottom navigation", () => {
+  assert.equal(appSource.includes("<AppHeader"), true);
+  assert.equal(appSource.includes("<TodayView"), true);
+  assert.equal(appSource.includes('className="mobile-tabs"'), false);
+  assert.equal(appSource.includes("<BodyView"), false);
+  assert.equal(styles.includes("-webkit-tap-highlight-color: transparent"), true);
 });
