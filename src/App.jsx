@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { Activity, BarChart3, Bolt, CalendarDays, CalendarRange, ChevronLeft, ChevronRight, Download, Dumbbell, Moon, Plus, RefreshCw, Scale, Sun, Trash2 } from "lucide-react";
 import { createRootScreen, createWorkoutScreen, screenStorageValue } from "./appState";
 import { buildFitnessExport, exportFilename } from "./exportData";
+import { normalizeStepsInput, normalizeWeightInput } from "./quickLogUtils";
 import SuggestedWorkoutPlan from "./SuggestedWorkoutPlan";
 import { buildProgressivePlanForSplit, canonicalSplit, shouldShowSuggestedPlan, suggestedPlanDraftStorageKey, suggestedPlanHiddenStorageKey } from "./workoutPlan";
 import { addSetToPlan, removeSetFromPlan, removeSetFromWorkouts } from "./workoutMutations";
@@ -423,19 +424,17 @@ function Tracker() {
     setSaving(false);
   }
 
-  async function saveBody(event) {
-    event.preventDefault();
-    const weight = Number(bodyForm.weight);
-    if (!weight || Number.isNaN(weight)) return;
-
+  async function saveWeightLog({ date, weight }) {
+    const normalizedWeight = normalizeWeightInput(weight);
+    if (!date || normalizedWeight === null) return false;
     setSaving(true);
     setNotice("");
     const { data, error } = await supabase
       .from("body_logs")
       .upsert({
         user_id: userId,
-        log_date: todayKey(),
-        weight,
+        log_date: date,
+        weight: normalizedWeight,
         updated_at: new Date().toISOString()
       }, { onConflict: "user_id,log_date" })
       .select("id,user_id,log_date,weight")
@@ -444,9 +443,15 @@ function Tracker() {
     if (error) setNotice(error.message);
     else {
       setBodyLogs((items) => [...items.filter((item) => item.log_date !== data.log_date), data].sort((a, b) => a.log_date.localeCompare(b.log_date)));
-      setBodyForm({ weight: "" });
     }
     setSaving(false);
+    return !error;
+  }
+
+  async function saveBody(event) {
+    event.preventDefault();
+    const saved = await saveWeightLog({ date: todayKey(), weight: bodyForm.weight });
+    if (saved) setBodyForm({ weight: "" });
   }
 
   async function changeSplit(split) {
@@ -465,7 +470,11 @@ function Tracker() {
     setNotice("");
     try {
       const fields = {};
-      if (steps !== undefined) fields.steps = steps === "" ? null : Number(steps);
+      if (steps !== undefined) {
+        const normalizedSteps = steps === "" ? null : normalizeStepsInput(steps);
+        if (steps !== "" && normalizedSteps === null) return false;
+        fields.steps = normalizedSteps;
+      }
 
       await ensureWorkoutForDate(date, undefined, fields);
       return true;
