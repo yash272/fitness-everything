@@ -21,4 +21,6 @@ test("an opened History calendar appears before recent sessions with period prog
   assert.ok(monthGrid > calendarPanel);
   assert.equal(historySource.includes("Total steps"), false);
   assert.match(historySource, /formatDailySteps\(workout\?\.steps\)/);
+  assert.equal(historySource.includes("Open {formatDate(selectedDate)}"), false);
+  assert.match(historySource, /workoutStatusLabel\(selectedWorkout\)/);
 });

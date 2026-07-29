@@ -80,6 +80,10 @@ export default function HistoryView({
     () => periodProgress(workouts, periodStart, periodEnd),
     [periodEnd, periodStart, workouts]
   );
+  const selectedWorkout = useMemo(
+    () => workouts.find((workout) => workout.workout_date === selectedDate),
+    [selectedDate, workouts]
+  );
 
   function moveWeek(amount) {
     const next = addDays(weekStart, amount * 7);
@@ -142,7 +146,7 @@ export default function HistoryView({
           )}
 
           <button type="button" className="open-calendar-day" onClick={() => onOpenWorkout(selectedDate)}>
-            Open {formatDate(selectedDate)}
+            <span>{formatDate(selectedDate)} - <strong>{workoutStatusLabel(selectedWorkout)}</strong></span>
             <ChevronRight size={17} />
           </button>
         </section>
