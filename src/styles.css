@@ -868,26 +868,6 @@ select:focus {
   transform: none;
 }
 
-.chart-hit::after {
-  content: "";
-  position: absolute;
-  left: var(--dot-x);
-  top: var(--dot-y);
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--chart-line);
-  transform: translate(-50%, -50%);
-  transition: transform 160ms ease, box-shadow 160ms ease;
-}
-
-.chart-hit:hover::after,
-.chart-hit:focus-visible::after,
-.chart-hit.selected::after {
-  transform: translate(-50%, -50%) scale(1.65);
-  box-shadow: 0 0 0 3px rgba(215, 255, 79, 0.2);
-}
-
 .chart-tooltip {
   position: absolute;
   z-index: 4;

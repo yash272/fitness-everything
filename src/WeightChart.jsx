@@ -72,9 +72,7 @@ export default function WeightChart({ logs, range }) {
             className={`chart-hit ${selectedPointId === point.id ? "selected" : ""}`}
             style={{
               left: `${point.hitLeft}%`,
-              right: `calc(100% - ${point.hitRight}%)`,
-              "--dot-x": `${point.dotX}%`,
-              "--dot-y": `${point.y}%`
+              right: `calc(100% - ${point.hitRight}%)`
             }}
             aria-label={`${formatDate(point.log_date)}, ${Number(point.weight).toFixed(1)} kilograms`}
             onClick={() => setSelectedPointId(point.id)}
