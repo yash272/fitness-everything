@@ -1,6 +1,6 @@
 import { CalendarDays, CalendarRange, ChevronLeft, ChevronRight, Dumbbell, Timer } from "lucide-react";
 import { useMemo } from "react";
-import { consistencySummary, historyCategory, recentHistoryItems } from "./historyUtils";
+import { consistencySummary, formatDailySteps, historyCategory, periodProgress, recentHistoryItems } from "./historyUtils";
 import { hasWorkoutActivity, workoutStatusLabel } from "./workoutDisplayUtils";
 
 const FILTERS = ["All", "Push", "Pull", "Legs", "Activity"];
@@ -70,11 +70,27 @@ export default function HistoryView({
   const selectedDateObject = useMemo(() => new Date(`${selectedDate}T12:00:00`), [selectedDate]);
   const weekStart = useMemo(() => startOfWeek(selectedDateObject), [selectedDateObject]);
   const weekEnd = addDays(weekStart, 6);
+  const periodStart = calendarMode === "week"
+    ? dateKey(weekStart)
+    : dateKey(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), 1));
+  const periodEnd = calendarMode === "week"
+    ? dateKey(weekEnd)
+    : dateKey(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 0));
+  const progress = useMemo(
+    () => periodProgress(workouts, periodStart, periodEnd),
+    [periodEnd, periodStart, workouts]
+  );
 
   function moveWeek(amount) {
     const next = addDays(weekStart, amount * 7);
     onSelectedDateChange(dateKey(next));
     onCalendarMonthChange(new Date(next.getFullYear(), next.getMonth(), 1));
+  }
+
+  function moveMonth(amount) {
+    const next = addMonths(calendarMonth, amount);
+    onCalendarMonthChange(next);
+    onSelectedDateChange(dateKey(next));
   }
 
   return (
@@ -92,6 +108,45 @@ export default function HistoryView({
           <CalendarDays size={18} />
         </button>
       </section>
+
+      {calendarOpen ? (
+        <section className="history-calendar">
+          <div className="history-calendar-head">
+            <div>
+              <span>{calendarMode === "week" ? "Weekly progress" : "Monthly progress"}</span>
+              <strong>{calendarMode === "week"
+                ? `${formatDate(dateKey(weekStart))} - ${formatDate(dateKey(weekEnd))}`
+                : calendarMonth.toLocaleDateString(undefined, { month: "long", year: "numeric" })}</strong>
+            </div>
+            <div className="history-calendar-actions">
+              <div className="calendar-mode">
+                <button type="button" className={calendarMode === "week" ? "active" : ""} onClick={() => onCalendarModeChange("week")} aria-label="Show week view"><CalendarDays size={15} /></button>
+                <button type="button" className={calendarMode === "month" ? "active" : ""} onClick={() => onCalendarModeChange("month")} aria-label="Show month view"><CalendarRange size={15} /></button>
+              </div>
+              <button type="button" onClick={() => calendarMode === "week" ? moveWeek(-1) : moveMonth(-1)} aria-label={`Previous ${calendarMode}`}><ChevronLeft size={16} /></button>
+              <button type="button" onClick={() => calendarMode === "week" ? moveWeek(1) : moveMonth(1)} aria-label={`Next ${calendarMode}`}><ChevronRight size={16} /></button>
+            </div>
+          </div>
+
+          <div className="history-period-summary">
+            <div>
+              <span>Workout days</span>
+              <strong>{progress.workoutDays}</strong>
+            </div>
+          </div>
+
+          {calendarMode === "week" ? (
+            <WeekCalendar weekStart={weekStart} workouts={workouts} selectedDate={selectedDate} onSelect={onSelectedDateChange} />
+          ) : (
+            <MonthCalendar month={calendarMonth} workouts={workouts} bodyLogs={bodyLogs} selectedDate={selectedDate} onSelect={onSelectedDateChange} />
+          )}
+
+          <button type="button" className="open-calendar-day" onClick={() => onOpenWorkout(selectedDate)}>
+            Open {formatDate(selectedDate)}
+            <ChevronRight size={17} />
+          </button>
+        </section>
+      ) : null}
 
       <div className="history-filters" aria-label="History filters">
         {FILTERS.map((item) => (
@@ -127,37 +182,6 @@ export default function HistoryView({
         }) : <div className="history-empty">No days match this filter.</div>}
       </section>
 
-      {calendarOpen ? (
-        <section className="history-calendar">
-          <div className="history-calendar-head">
-            <div>
-              <span>Calendar</span>
-              <strong>{calendarMode === "week"
-                ? `${formatDate(dateKey(weekStart))} - ${formatDate(dateKey(weekEnd))}`
-                : calendarMonth.toLocaleDateString(undefined, { month: "long", year: "numeric" })}</strong>
-            </div>
-            <div className="history-calendar-actions">
-              <div className="calendar-mode">
-                <button type="button" className={calendarMode === "week" ? "active" : ""} onClick={() => onCalendarModeChange("week")} aria-label="Show week view"><CalendarDays size={15} /></button>
-                <button type="button" className={calendarMode === "month" ? "active" : ""} onClick={() => onCalendarModeChange("month")} aria-label="Show month view"><CalendarRange size={15} /></button>
-              </div>
-              <button type="button" onClick={() => calendarMode === "week" ? moveWeek(-1) : onCalendarMonthChange(addMonths(calendarMonth, -1))} aria-label={`Previous ${calendarMode}`}><ChevronLeft size={16} /></button>
-              <button type="button" onClick={() => calendarMode === "week" ? moveWeek(1) : onCalendarMonthChange(addMonths(calendarMonth, 1))} aria-label={`Next ${calendarMode}`}><ChevronRight size={16} /></button>
-            </div>
-          </div>
-
-          {calendarMode === "week" ? (
-            <WeekCalendar weekStart={weekStart} workouts={workouts} selectedDate={selectedDate} onSelect={onSelectedDateChange} />
-          ) : (
-            <MonthCalendar month={calendarMonth} workouts={workouts} bodyLogs={bodyLogs} selectedDate={selectedDate} onSelect={onSelectedDateChange} />
-          )}
-
-          <button type="button" className="open-calendar-day" onClick={() => onOpenWorkout(selectedDate)}>
-            Open {formatDate(selectedDate)}
-            <ChevronRight size={17} />
-          </button>
-        </section>
-      ) : null}
     </div>
   );
 }
@@ -173,6 +197,7 @@ function WeekCalendar({ weekStart, workouts, selectedDate, onSelect }) {
           <button type="button" key={key} className={`${selectedDate === key ? "selected" : ""} ${hasWorkoutActivity(workout) ? "trained" : ""}`} onClick={() => onSelect(key)}>
             <span>{date.toLocaleDateString(undefined, { weekday: "narrow" })}</span>
             <strong>{date.getDate()}</strong>
+            <small>{formatDailySteps(workout?.steps)}</small>
             <i />
           </button>
         );
@@ -203,7 +228,7 @@ function MonthCalendar({ month, workouts, bodyLogs, selectedDate, onSelect }) {
           return (
             <button type="button" key={key} className={`${selectedDate === key ? "selected" : ""} ${hasWorkoutActivity(workout) ? "trained" : ""}`} onClick={() => onSelect(key)}>
               <strong>{day}</strong>
-              <small>{workout?.steps ? `${Math.round(Number(workout.steps) / 100) / 10}k` : ""}</small>
+              <small>{formatDailySteps(workout?.steps)}</small>
               <small>{body ? Number(body.weight).toFixed(1) : ""}</small>
             </button>
           );

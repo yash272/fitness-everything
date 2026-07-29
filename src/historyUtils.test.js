@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { consistencySummary, historyCategory, recentHistoryItems } from "./historyUtils.js";
+import { consistencySummary, formatDailySteps, historyCategory, periodProgress, recentHistoryItems } from "./historyUtils.js";
 
 function weightedWorkout(date, split) {
   return {
@@ -51,4 +51,26 @@ test("consistency counts Monday-to-today and month-to-today", () => {
     week: 1,
     month: 3
   });
+});
+
+test("period progress counts active workout days", () => {
+  const input = [
+    { ...weightedWorkout("2026-07-27", "Pull"), steps: 12000 },
+    { ...weightedWorkout("2026-07-29", "Push"), steps: 9500 },
+    { workout_date: "2026-07-28", split: "", steps: 8000, exercises: [] },
+    { ...weightedWorkout("2026-08-01", "Legs"), steps: 11000 }
+  ];
+
+  assert.deepEqual(periodProgress(input, "2026-07-27", "2026-08-02"), {
+    workoutDays: 3
+  });
+  assert.deepEqual(periodProgress(input, "2026-07-27", "2026-07-31"), {
+    workoutDays: 2
+  });
+});
+
+test("daily steps are compact enough for week and month cells", () => {
+  assert.equal(formatDailySteps(15072), "15.1k");
+  assert.equal(formatDailySteps(8000), "8k");
+  assert.equal(formatDailySteps(null), "—");
 });

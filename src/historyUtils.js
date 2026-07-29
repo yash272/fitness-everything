@@ -36,3 +36,18 @@ export function consistencySummary(workouts, today = new Date()) {
     return summary;
   }, { week: 0, month: 0 });
 }
+
+export function periodProgress(workouts, startDate, endDate) {
+  return workouts.reduce((summary, workout) => {
+    if (workout.workout_date < startDate || workout.workout_date > endDate) return summary;
+    if (hasWorkoutActivity(workout)) summary.workoutDays += 1;
+    return summary;
+  }, { workoutDays: 0 });
+}
+
+export function formatDailySteps(steps) {
+  const value = Number(steps);
+  if (!Number.isFinite(value) || value <= 0) return "—";
+  const compact = Math.round(value / 100) / 10;
+  return `${compact.toLocaleString(undefined, { maximumFractionDigits: 1 })}k`;
+}
