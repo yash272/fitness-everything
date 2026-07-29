@@ -3,13 +3,9 @@ import { Activity, CalendarDays, CalendarRange, ChevronLeft, ChevronRight, Downl
 import { createRootScreen, createWorkoutScreen, screenStorageValue } from "./appState";
 import AppHeader from "./AppHeader";
 import { buildFitnessExport, exportFilename } from "./exportData";
-import HistoryView from "./HistoryView";
-import { normalizeStepsInput, normalizeWeightInput } from "./quickLogUtils";
 import SuggestedWorkoutPlan from "./SuggestedWorkoutPlan";
-import TodayView from "./TodayView";
-import WorkoutView from "./WorkoutView";
 import { buildProgressivePlanForSplit, canonicalSplit, shouldShowSuggestedPlan, suggestedPlanDraftStorageKey, suggestedPlanHiddenStorageKey } from "./workoutPlan";
-import { addSetToPlan, removeSetFromPlan, removeSetFromWorkouts, upsertSetInWorkouts } from "./workoutMutations";
+import { addSetToPlan, removeSetFromPlan, removeSetFromWorkouts } from "./workoutMutations";
 import { isSupabaseConfigured, supabase } from "./supabaseClient";
 import { hasWorkoutActivity, toggleWorkoutType, workoutActivityFlag, workoutStageLabel, workoutStatusLabel, workoutTypeForEdit, workoutTypeLabel } from "./workoutDisplayUtils";
 
@@ -680,16 +676,8 @@ function Tracker() {
           <WorkoutView
             date={workoutDate}
             selectedSplit={workoutTypeForEdit(selectedWorkout)}
-            workout={selectedWorkout}
             workouts={workouts}
-            workoutTypes={workoutTypes}
-            saving={saving}
-            onChangeType={changeSplit}
-            onClearType={() => clearWorkoutType(workoutDate)}
-            onSaveSet={saveStrengthSet}
-            onSaveActivity={saveTimedActivity}
-            onDeleteSet={deleteSet}
-            onDeleteExercise={deleteExercise}
+            changeSplit={changeSplit}
             exerciseForm={exerciseForm}
             setExerciseForm={setExerciseForm}
             isAddingExercise={isAddingExercise}
@@ -939,7 +927,7 @@ function saveHiddenSplits(selectedDate, hiddenSplits) {
   }
 }
 
-function LegacyWorkoutView({ selectedDate, selectedSplit, workouts, changeSplit, exerciseForm, setExerciseForm, isAddingExercise, setIsAddingExercise, addExercise, exerciseNames, workoutTypes, selectedWorkout, saveDailyLog, bestBefore, repeatSet, deleteSet, deleteExercise, acceptSuggestedPlan, saving }) {
+function WorkoutView({ selectedDate, selectedSplit, workouts, changeSplit, exerciseForm, setExerciseForm, isAddingExercise, setIsAddingExercise, addExercise, exerciseNames, workoutTypes, selectedWorkout, saveDailyLog, bestBefore, repeatSet, deleteSet, deleteExercise, acceptSuggestedPlan, saving }) {
   const [isEditingType, setIsEditingType] = useState(false);
   const [isEditingSteps, setIsEditingSteps] = useState(false);
   const [typeDraft, setTypeDraft] = useState(selectedSplit);
@@ -1329,6 +1317,155 @@ function LegacyWorkoutView({ selectedDate, selectedSplit, workouts, changeSplit,
         </div>
       </section>
     </>
+  );
+}
+
+function BodyView({ bodyForm, setBodyForm, saveBody, bodyLogs, saving }) {
+  return (
+    <>
+      <FocusStage className="body-focus">
+        <form className="form body-entry" onSubmit={saveBody}>
+          <div>
+            <span className="stage-label">Daily check-in</span>
+            <h2>Log weight</h2>
+          </div>
+          <div className="one-field">
+            <label>
+              Weight kg
+              <input type="number" min="0" step="0.1" inputMode="decimal" value={bodyForm.weight} placeholder="75.2" onChange={(event) => setBodyForm({ ...bodyForm, weight: event.target.value })} />
+            </label>
+          </div>
+          <button className="primary primary-accent" disabled={saving}><Scale size={18} />Save Today's Log</button>
+        </form>
+      </FocusStage>
+
+      <section className="panel-section">
+        <h2>History</h2>
+        <div className="list">
+          {bodyLogs.length ? bodyLogs.slice().reverse().slice(0, 30).map((entry) => (
+            <div className="row" key={entry.id}>
+              <div>
+                <strong>{Number(entry.weight).toFixed(1)} kg</strong>
+                <span>{formatDate(entry.log_date)}</span>
+              </div>
+              <b>{bodyTrend(entry, bodyLogs)}</b>
+            </div>
+          )) : <Empty text="No weigh-ins yet." />}
+        </div>
+      </section>
+    </>
+  );
+}
+
+function WeightChart({ logs, range }) {
+  const [selectedPointId, setSelectedPointId] = useState(null);
+  const [tooltipPosition, setTooltipPosition] = useState(null);
+  const plotRef = useRef(null);
+  const tooltipRef = useRef(null);
+  const model = useMemo(() => buildWeightChartModel(logs, range), [logs, range]);
+  const selectedPoint = model.points.find((point) => point.id === selectedPointId);
+
+  useEffect(() => {
+    setSelectedPointId(null);
+  }, [range]);
+
+  useLayoutEffect(() => {
+    const plot = plotRef.current;
+    const tooltip = tooltipRef.current;
+    if (!selectedPoint || !plot || !tooltip) return undefined;
+
+    const positionTooltip = () => {
+      const plotRect = plot.getBoundingClientRect();
+      const tooltipRect = tooltip.getBoundingClientRect();
+      const anchorX = (selectedPoint.x / 100) * plotRect.width;
+      const anchorY = (selectedPoint.y / 100) * plotRect.height;
+      const halfTooltipWidth = tooltipRect.width / 2;
+      const gap = 8;
+      const edgeInset = 1;
+
+      setTooltipPosition({
+        id: selectedPoint.id,
+        left: Math.min(
+          plotRect.width - halfTooltipWidth - edgeInset,
+          Math.max(halfTooltipWidth + edgeInset, anchorX)
+        ),
+        top: Math.min(
+          plotRect.height - edgeInset,
+          Math.max(tooltipRect.height + edgeInset, anchorY - gap)
+        )
+      });
+    };
+
+    positionTooltip();
+    const resizeObserver = new ResizeObserver(positionTooltip);
+    resizeObserver.observe(plot);
+    resizeObserver.observe(tooltip);
+    return () => resizeObserver.disconnect();
+  }, [selectedPoint]);
+
+  if (model.points.length < 2) {
+    return (
+      <div className="chart empty-chart" role="img" aria-label="Weight trend chart">
+        <span>Log at least two weights to see your trend</span>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="chart graph-chart"
+      role="group"
+      aria-label={`Weight trend from ${formatDate(model.points[0].log_date)} to ${formatDate(model.points.at(-1).log_date)}`}
+    >
+      <div className="chart-y-axis" aria-hidden="true">
+        <span>{model.max.toFixed(1)} kg</span>
+        <span>{model.mid.toFixed(1)} kg</span>
+        <span>{model.min.toFixed(1)} kg</span>
+      </div>
+      <div className="chart-plot" ref={plotRef} key={range}>
+        <svg className="chart-svg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+          {[16, 52, 88].map((y) => (
+            <line key={y} className="chart-gridline" x1="0" y1={y} x2="100" y2={y} />
+          ))}
+          <polygon className="chart-area" points={model.areaPoints} />
+          <polyline className="chart-line" points={model.svgPoints} />
+        </svg>
+        {model.points.map((point) => (
+          <button
+            type="button"
+            key={point.id}
+            className={`chart-hit ${selectedPointId === point.id ? "selected" : ""}`}
+            style={{
+              left: `${point.hitLeft}%`,
+              right: `calc(100% - ${point.hitRight}%)`,
+              "--dot-x": `${point.dotX}%`,
+              "--dot-y": `${point.y}%`
+            }}
+            aria-label={`${formatDate(point.log_date)}, ${Number(point.weight).toFixed(1)} kilograms`}
+            onClick={() => setSelectedPointId(point.id)}
+            onFocus={() => setSelectedPointId(point.id)}
+          />
+        ))}
+        {selectedPoint ? (
+          <output
+            className="chart-tooltip"
+            ref={tooltipRef}
+            style={{
+              left: tooltipPosition?.id === selectedPoint.id ? tooltipPosition.left : 0,
+              top: tooltipPosition?.id === selectedPoint.id ? tooltipPosition.top : 0,
+              visibility: tooltipPosition?.id === selectedPoint.id ? "visible" : "hidden"
+            }}
+          >
+            {formatDate(selectedPoint.log_date)} · {Number(selectedPoint.weight).toFixed(1)} kg
+          </output>
+        ) : null}
+      </div>
+      <div className="chart-x-axis" aria-hidden="true">
+        {model.labelIndexes.map((index) => (
+          <span key={model.points[index].id}>{formatDate(model.points[index].log_date)}</span>
+        ))}
+      </div>
+    </div>
   );
 }
 
