@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { addSetToPlan, removeSetFromPlan, removeSetFromWorkouts, upsertSetInWorkouts } from "./workoutMutations.js";
+import { addSetToPlan, removeSetFromPlan, removeSetFromWorkouts } from "./workoutMutations.js";
 
 const workouts = [
   {
@@ -65,33 +65,3 @@ assert.notEqual(planAfterAddingSet.exercises[0], plan.exercises[0]);
 
 const planAfterAddingBlankSet = addSetToPlan({ exercises: [{ name: "New movement", sets: [] }] }, 0);
 assert.deepEqual(planAfterAddingBlankSet.exercises[0].sets, [{ reps: "", weight: "", duration: "" }]);
-
-const withNewExerciseSet = upsertSetInWorkouts(
-  workouts,
-  "workout-1",
-  { id: "exercise-3", name: "Hammer Curl", exercise_sets: [] },
-  { id: "set-4", reps: 12, weight: 25 }
-);
-assert.deepEqual(withNewExerciseSet[0].exercises[2], {
-  id: "exercise-3",
-  name: "Hammer Curl",
-  exercise_sets: [{ id: "set-4", reps: 12, weight: 25 }]
-});
-assert.equal(workouts[0].exercises.length, 2);
-
-const withEditedSet = upsertSetInWorkouts(
-  workouts,
-  "workout-1",
-  workouts[0].exercises[0],
-  { id: "set-1", reps: 12, weight: 120 }
-);
-assert.deepEqual(withEditedSet[0].exercises[0].exercise_sets[0], {
-  id: "set-1",
-  reps: 12,
-  weight: 120
-});
-assert.deepEqual(workouts[0].exercises[0].exercise_sets[0], {
-  id: "set-1",
-  reps: 10,
-  weight: 120
-});

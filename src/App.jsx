@@ -1,12 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Activity, CalendarDays, CalendarRange, ChevronLeft, ChevronRight, Download, Dumbbell, Plus, RefreshCw, Trash2 } from "lucide-react";
-import { createRootScreen, createWorkoutScreen, screenStorageValue } from "./appState";
-import AppHeader from "./AppHeader";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Activity, BarChart3, Bolt, CalendarDays, CalendarRange, ChevronLeft, ChevronRight, Download, Dumbbell, Moon, Plus, RefreshCw, Scale, Sun, Trash2 } from "lucide-react";
 import { buildFitnessExport, exportFilename } from "./exportData";
 import SuggestedWorkoutPlan from "./SuggestedWorkoutPlan";
 import { buildProgressivePlanForSplit, canonicalSplit, shouldShowSuggestedPlan, suggestedPlanDraftStorageKey, suggestedPlanHiddenStorageKey } from "./workoutPlan";
 import { addSetToPlan, removeSetFromPlan, removeSetFromWorkouts } from "./workoutMutations";
 import { isSupabaseConfigured, supabase } from "./supabaseClient";
+import { buildWeightChartModel } from "./weightChartUtils";
 import { hasWorkoutActivity, toggleWorkoutType, workoutActivityFlag, workoutStageLabel, workoutStatusLabel, workoutTypeForEdit, workoutTypeLabel } from "./workoutDisplayUtils";
 
 const DEFAULT_WORKOUT_TYPES = ["Push", "Pull", "Legs", "Cardio", "Sports", "Mobility"];
@@ -43,11 +42,10 @@ function App() {
 
 function Tracker() {
   const userId = import.meta.env.VITE_PERSONAL_USER_ID;
-  const [screen, setScreen] = useState(() => {
+  const [activeView, setActiveView] = useState(() => {
     const saved = localStorage.getItem("fitness-active-view");
-    return createRootScreen(saved === "daily" || saved === "history" ? "history" : "today");
+    return ["dashboard", "daily", "workout", "body"].includes(saved) ? saved : "dashboard";
   });
-  const activeView = screen.name === "history" ? "daily" : screen.name === "workout" ? "workout" : "dashboard";
   const [theme, setTheme] = useState(() => localStorage.getItem("fitness-theme") || "light");
   const [range, setRange] = useState(30);
   const [workouts, setWorkouts] = useState([]);
@@ -56,13 +54,12 @@ function Tracker() {
   const [workoutDate, setWorkoutDate] = useState(todayKey());
   const [calendarMonth, setCalendarMonth] = useState(startOfMonth(new Date()));
   const [calendarMode, setCalendarMode] = useState(() => localStorage.getItem("fitness-calendar-mode") === "month" ? "month" : "week");
-  const [historyFilter, setHistoryFilter] = useState(() => localStorage.getItem("fitness-history-filter") || "All");
-  const [isHistoryCalendarOpen, setIsHistoryCalendarOpen] = useState(() => localStorage.getItem("fitness-history-calendar-open") === "true");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [isWorkoutDatePickerOpen, setIsWorkoutDatePickerOpen] = useState(false);
   const [isAddingExercise, setIsAddingExercise] = useState(false);
   const [exerciseForm, setExerciseForm] = useState({ name: "", trackingType: "weighted", sets: [{ reps: "10", weight: "", duration: "" }] });
+  const [bodyForm, setBodyForm] = useState({ weight: "" });
   const [notice, setNotice] = useState("");
   const [exportFile, setExportFile] = useState(null);
   const [isExportOptionsOpen, setIsExportOptionsOpen] = useState(false);
@@ -79,13 +76,8 @@ function Tracker() {
   }, [calendarMode]);
 
   useEffect(() => {
-    localStorage.setItem("fitness-history-filter", historyFilter);
-    localStorage.setItem("fitness-history-calendar-open", String(isHistoryCalendarOpen));
-  }, [historyFilter, isHistoryCalendarOpen]);
-
-  useEffect(() => {
-    localStorage.setItem("fitness-active-view", screenStorageValue(screen));
-  }, [screen]);
+    localStorage.setItem("fitness-active-view", activeView);
+  }, [activeView]);
 
   useEffect(() => {
     const resetScroll = () => {
@@ -102,6 +94,7 @@ function Tracker() {
     if (exportFile?.url) URL.revokeObjectURL(exportFile.url);
   }, [exportFile]);
 
+  const todayWorkout = useMemo(() => workouts.find((workout) => workout.workout_date === todayKey()), [workouts]);
   const selectedWorkout = useMemo(() => workouts.find((workout) => workout.workout_date === workoutDate), [workouts, workoutDate]);
   const exerciseNames = useMemo(() => {
     const names = new Set(Object.values(DEFAULT_EXERCISES).flat());
@@ -116,6 +109,20 @@ function Tracker() {
     });
     return [...types].sort((a, b) => a.localeCompare(b));
   }, [workouts]);
+  const recentPrs = useMemo(() => {
+    const prs = [];
+    workouts.forEach((workout) => {
+      workout.exercises?.forEach((exercise) => {
+        exercise.exercise_sets?.forEach((set) => {
+          if (set.is_pr) {
+            prs.push({ ...set, exercise: exercise.name, trackingType: exercise.tracking_type || "weighted", split: workout.split, date: workout.workout_date });
+          }
+        });
+      });
+    });
+    return prs.sort((a, b) => b.logged_at.localeCompare(a.logged_at)).slice(0, 8);
+  }, [workouts]);
+
   const loadData = useCallback(async () => {
     setLoading(true);
     const [workoutResult, bodyResult] = await Promise.all([
@@ -206,10 +213,16 @@ function Tracker() {
       return;
     }
     setWorkoutDate(date);
-    if (screen.name === "workout") {
-      setScreen(createWorkoutScreen(date, screen.returnTo));
-    }
     setIsWorkoutDatePickerOpen(false);
+  }
+
+  function changeView(view) {
+    setIsWorkoutDatePickerOpen(false);
+    if (view === "workout" && isFutureDateKey(workoutDate)) {
+      setNotice(FUTURE_WORKOUT_NOTICE);
+      setWorkoutDate(todayKey());
+    }
+    setActiveView(view);
   }
 
   function bestBefore(exerciseName, trackingType = "weighted", beforeDate = todayKey()) {
@@ -329,88 +342,6 @@ function Tracker() {
     }
   }
 
-  async function saveStrengthSet({ date, split, exercise, set }) {
-    const trackingType = exercise.trackingType || exercise.tracking_type || "weighted";
-    const normalized = normalizeSetInput(set, trackingType);
-    if (!normalized) return null;
-
-    setSaving(true);
-    setNotice("");
-    try {
-      const workout = await ensureWorkoutForDate(date, split, { did_workout: true });
-      let persistedExercise = (workout.exercises || []).find(
-        (item) => item.name.trim().toLowerCase() === exercise.name.trim().toLowerCase()
-      );
-
-      if (!persistedExercise) {
-        const { data, error } = await supabase
-          .from("exercises")
-          .insert({
-            workout_id: workout.id,
-            user_id: userId,
-            name: exercise.name.trim(),
-            tracking_type: trackingType
-          })
-          .select("id,user_id,name,tracking_type,created_at")
-          .single();
-        if (error) throw error;
-        persistedExercise = { ...data, exercise_sets: [] };
-      }
-
-      const previous = bestBefore(exercise.name, trackingType, date);
-      const payload = {
-        ...normalized,
-        is_pr: Boolean(previous) && isBetterSet(normalized, previous, trackingType)
-      };
-      const query = set.id
-        ? supabase.from("exercise_sets").update(payload).eq("id", set.id)
-        : supabase.from("exercise_sets").insert({
-          exercise_id: persistedExercise.id,
-          user_id: userId,
-          ...payload
-        });
-      const { data: savedSet, error: setError } = await query
-        .select("id,user_id,reps,weight,duration_minutes,is_pr,logged_at")
-        .single();
-      if (setError) throw setError;
-
-      setWorkouts((items) => upsertSetInWorkouts(items, workout.id, persistedExercise, savedSet));
-      return savedSet;
-    } catch (error) {
-      setNotice(error.message);
-      return null;
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function saveTimedActivity({ date, name, duration, setId }) {
-    const saved = await saveStrengthSet({
-      date,
-      split: name,
-      exercise: { name, trackingType: "time" },
-      set: { id: setId, duration }
-    });
-    return Boolean(saved);
-  }
-
-  async function clearWorkoutType(date) {
-    setIsWorkoutDatePickerOpen(false);
-    const workout = workouts.find((item) => item.workout_date === date);
-    const hasSets = workout?.exercises?.some((exercise) => exercise.exercise_sets?.length);
-    if (hasSets) {
-      setNotice("Remove the logged sets before clearing this session.");
-      return false;
-    }
-    try {
-      await ensureWorkoutForDate(date, "", { did_workout: false });
-      return true;
-    } catch (error) {
-      setNotice(error.message);
-      return false;
-    }
-  }
-
   async function repeatSet(exercise) {
     const last = exercise.exercise_sets?.at(-1);
     if (!last) return;
@@ -482,17 +413,19 @@ function Tracker() {
     setSaving(false);
   }
 
-  async function saveWeightLog({ date, weight }) {
-    const normalizedWeight = normalizeWeightInput(weight);
-    if (!date || normalizedWeight === null) return false;
+  async function saveBody(event) {
+    event.preventDefault();
+    const weight = Number(bodyForm.weight);
+    if (!weight || Number.isNaN(weight)) return;
+
     setSaving(true);
     setNotice("");
     const { data, error } = await supabase
       .from("body_logs")
       .upsert({
         user_id: userId,
-        log_date: date,
-        weight: normalizedWeight,
+        log_date: todayKey(),
+        weight,
         updated_at: new Date().toISOString()
       }, { onConflict: "user_id,log_date" })
       .select("id,user_id,log_date,weight")
@@ -501,13 +434,12 @@ function Tracker() {
     if (error) setNotice(error.message);
     else {
       setBodyLogs((items) => [...items.filter((item) => item.log_date !== data.log_date), data].sort((a, b) => a.log_date.localeCompare(b.log_date)));
+      setBodyForm({ weight: "" });
     }
     setSaving(false);
-    return !error;
   }
 
   async function changeSplit(split) {
-    setIsWorkoutDatePickerOpen(false);
     try {
       const nextSplit = workoutTypeLabel(split);
       await ensureWorkoutForDate(workoutDate, nextSplit, {
@@ -523,11 +455,7 @@ function Tracker() {
     setNotice("");
     try {
       const fields = {};
-      if (steps !== undefined) {
-        const normalizedSteps = steps === "" ? null : normalizeStepsInput(steps);
-        if (steps !== "" && normalizedSteps === null) return false;
-        fields.steps = normalizedSteps;
-      }
+      if (steps !== undefined) fields.steps = steps === "" ? null : Number(steps);
 
       await ensureWorkoutForDate(date, undefined, fields);
       return true;
@@ -577,50 +505,106 @@ function Tracker() {
     downloadExport(payload);
   }
 
+  const workoutSets = todayWorkout?.exercises?.reduce((sum, exercise) => sum + exercise.exercise_sets.length, 0) || 0;
+  const todayPrs = todayWorkout?.exercises?.reduce((sum, exercise) => sum + exercise.exercise_sets.filter((set) => set.is_pr).length, 0) || 0;
+  const latestBody = bodyLogs.at(-1);
+  const weekDays = workoutDaysWithin(workouts, weekStartKey(), todayKey());
+  const monthDays = workoutDaysWithin(workouts, monthStartKey(), todayKey());
+  const todaySteps = todayWorkout?.steps || 0;
+  const navItems = [
+    { id: "dashboard", label: "Dashboard", icon: BarChart3 },
+    { id: "daily", label: "Logs", icon: CalendarDays },
+    { id: "workout", label: "Workout", icon: Dumbbell },
+    { id: "body", label: "Body", icon: Scale }
+  ];
+  const viewTitles = {
+    dashboard: "Dashboard",
+    daily: "Logs",
+    workout: "Workout",
+    body: "Body"
+  };
+  const activeTitle = viewTitles[activeView] || viewTitles.dashboard;
   const dateChipDate = activeView === "workout" ? workoutDate : todayKey();
   const dateChipLabel = new Date(`${dateChipDate}T12:00:00`).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
 
   return (
     <div className="app-shell">
-      <AppHeader
-        screen={screen}
-        theme={theme}
-        isMenuOpen={isExportOptionsOpen}
-        exportMonth={exportMonth}
-        onExportMonthChange={setExportMonth}
-        onOpenToday={() => setScreen(createRootScreen("today"))}
-        onOpenHistory={() => setScreen(createRootScreen("history"))}
-        onBack={() => setScreen(createRootScreen(screen.returnTo))}
-        onToggleMenu={() => setIsExportOptionsOpen((open) => !open)}
-        onToggleTheme={() => {
-          setTheme((current) => current === "dark" ? "light" : "dark");
-          setIsExportOptionsOpen(false);
-        }}
-        onExportMonth={exportSelectedMonth}
-        onExportAll={exportAllTimeData}
-      />
-
-      <main className={`app view-frame view-${activeView}`}>
-        {activeView !== "dashboard" ? (
-          <section className="hero-row">
-            <h1>{activeView === "daily" ? "History" : "Workout"}</h1>
-            {activeView === "workout" ? (
-              <div className="date-chip date-chip-picker">
-                <button type="button" className="date-chip-trigger" onClick={() => setIsWorkoutDatePickerOpen((open) => !open)} aria-expanded={isWorkoutDatePickerOpen} aria-label="Change workout date" title="Change workout date">
-                  <CalendarDays size={16} />
-                  <span>{dateChipLabel}</span>
+      <header className="topbar">
+        <div className="brand">
+          <span className="brand-mark"><Bolt size={18} strokeWidth={2.4} /></span>
+          <strong>fitness</strong>
+        </div>
+        <nav className="desktop-tabs" aria-label="Primary">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.id}
+                className={activeView === item.id ? "active" : ""}
+                onClick={() => changeView(item.id)}
+              >
+                <Icon size={17} />
+                {item.label}
+              </button>
+            );
+          })}
+        </nav>
+        <div className="top-actions">
+          <div className="export-control">
+            <button className="icon-button export-button" onClick={() => setIsExportOptionsOpen((open) => !open)} aria-expanded={isExportOptionsOpen} aria-label="Choose data export range" title="Choose data export range">
+              <Download size={18} />
+              <span>Export</span>
+            </button>
+            {isExportOptionsOpen ? (
+              <div className="export-popover" role="dialog" aria-label="Export options">
+                <label>
+                  <span>Month</span>
+                  <input type="month" value={exportMonth} onChange={(event) => setExportMonth(event.target.value)} />
+                </label>
+                <button type="button" onClick={exportSelectedMonth} disabled={!exportMonth}>
+                  Export month
                 </button>
-                {isWorkoutDatePickerOpen ? (
-                  <div className="date-popover">
-                    <input ref={workoutDateInputRef} type="date" value={workoutDate} max={todayKey()} onInput={(event) => selectWorkoutDate(event.target.value)} onKeyDown={(event) => {
-                      if (event.key === "Escape") setIsWorkoutDatePickerOpen(false);
-                    }} aria-label="Workout date" />
-                  </div>
-                ) : null}
+                <button type="button" className="secondary" onClick={exportAllTimeData}>
+                  Export all time
+                </button>
               </div>
             ) : null}
-          </section>
-        ) : null}
+          </div>
+          <button
+            className="icon-button"
+            onClick={() => setTheme((current) => current === "dark" ? "light" : "dark")}
+            aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+            title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+          >
+            {theme === "dark" ? <Sun size={19} /> : <Moon size={19} />}
+          </button>
+        </div>
+      </header>
+
+      <main className={`app view-frame view-${activeView}`} key={activeView}>
+        <section className="hero-row">
+          <h1>{activeTitle}</h1>
+          {activeView === "workout" ? (
+            <div className="date-chip date-chip-picker">
+              <button type="button" className="date-chip-trigger" onClick={() => setIsWorkoutDatePickerOpen((open) => !open)} aria-expanded={isWorkoutDatePickerOpen} aria-label="Change workout date" title="Change workout date">
+                <CalendarDays size={16} />
+                <span>{dateChipLabel}</span>
+              </button>
+              {isWorkoutDatePickerOpen ? (
+                <div className="date-popover">
+                  <input ref={workoutDateInputRef} type="date" value={workoutDate} max={todayKey()} onChange={(event) => selectWorkoutDate(event.target.value)} onKeyDown={(event) => {
+                    if (event.key === "Escape") setIsWorkoutDatePickerOpen(false);
+                  }} aria-label="Workout date" />
+                </div>
+              ) : null}
+            </div>
+          ) : (
+            <div className="date-chip">
+              <CalendarDays size={16} />
+              {dateChipLabel}
+            </div>
+          )}
+        </section>
 
         {notice && (
           <div className="notice">
@@ -636,45 +620,37 @@ function Tracker() {
         {loading ? <Shell message="Loading synced data..." compact /> : null}
 
         {!loading && activeView === "dashboard" && (
-          <TodayView
+          <Dashboard
+            workoutSets={workoutSets}
+            todayWorkout={todayWorkout}
+            todayPrs={todayPrs}
+            latestBody={latestBody}
+            weekDays={weekDays}
+            monthDays={monthDays}
             bodyLogs={bodyLogs}
-            workouts={workouts}
             range={range}
             setRange={setRange}
-            onSaveWeight={saveWeightLog}
-            onSaveSteps={saveDailyLog}
-            onOpenWorkout={(date) => {
-              setWorkoutDate(date);
-              setScreen(createWorkoutScreen(date, "today"));
-            }}
-            saving={saving}
+            recentPrs={recentPrs}
+            todaySteps={todaySteps}
           />
         )}
 
         {!loading && activeView === "daily" && (
-          <HistoryView
+          <DailyView
             workouts={workouts}
             bodyLogs={bodyLogs}
-            filter={historyFilter}
-            onFilterChange={setHistoryFilter}
-            calendarOpen={isHistoryCalendarOpen}
-            onCalendarOpenChange={setIsHistoryCalendarOpen}
-            calendarMode={calendarMode}
-            onCalendarModeChange={setCalendarMode}
-            calendarMonth={calendarMonth}
-            onCalendarMonthChange={setCalendarMonth}
             selectedDate={logDate}
-            onSelectedDateChange={selectLogDate}
-            onOpenWorkout={(date) => {
-              setWorkoutDate(date);
-              setScreen(createWorkoutScreen(date, "history"));
-            }}
+            setSelectedDate={selectLogDate}
+            calendarMonth={calendarMonth}
+            setCalendarMonth={setCalendarMonth}
+            calendarMode={calendarMode}
+            setCalendarMode={setCalendarMode}
           />
         )}
 
         {!loading && activeView === "workout" && (
           <WorkoutView
-            date={workoutDate}
+            selectedDate={workoutDate}
             selectedSplit={workoutTypeForEdit(selectedWorkout)}
             workouts={workouts}
             changeSplit={changeSplit}
@@ -684,6 +660,7 @@ function Tracker() {
             setIsAddingExercise={setIsAddingExercise}
             addExercise={addExercise}
             exerciseNames={exerciseNames}
+            workoutTypes={workoutTypes}
             selectedWorkout={selectedWorkout}
             saveDailyLog={saveDailyLog}
             bestBefore={bestBefore}
@@ -691,13 +668,113 @@ function Tracker() {
             deleteSet={deleteSet}
             deleteExercise={deleteExercise}
             acceptSuggestedPlan={acceptSuggestedPlan}
-            saveStrengthSet={saveStrengthSet}
-            saveTimedActivity={saveTimedActivity}
-            clearWorkoutType={clearWorkoutType}
+            saving={saving}
           />
         )}
 
+        {!loading && activeView === "body" && (
+          <BodyView
+            bodyForm={bodyForm}
+            setBodyForm={setBodyForm}
+            saveBody={saveBody}
+            bodyLogs={bodyLogs}
+            saving={saving}
+          />
+        )}
       </main>
+
+      <nav className="mobile-tabs" aria-label="Primary">
+        {navItems.map((item) => {
+          const Icon = item.icon;
+          return (
+            <button
+              key={item.id}
+              className={activeView === item.id ? "active" : ""}
+              onClick={() => changeView(item.id)}
+            >
+              <Icon size={21} />
+              <span>{item.label}</span>
+            </button>
+          );
+        })}
+      </nav>
+    </div>
+  );
+}
+
+function Dashboard({ workoutSets, todayWorkout, todayPrs, latestBody, weekDays, monthDays, bodyLogs, range, setRange, recentPrs, todaySteps }) {
+  const didWorkoutToday = hasWorkoutActivity(todayWorkout);
+  const chartModel = useMemo(() => buildWeightChartModel(bodyLogs, range), [bodyLogs, range]);
+  const firstVisibleWeight = chartModel.points[0] ? Number(chartModel.points[0].weight) : null;
+  const latestVisibleWeight = chartModel.points.at(-1) ? Number(chartModel.points.at(-1).weight) : null;
+  const visibleWeightChange = firstVisibleWeight === null || latestVisibleWeight === null
+    ? null
+    : latestVisibleWeight - firstVisibleWeight;
+  const visibleWeightChangeLabel = visibleWeightChange === null
+    ? "--"
+    : `${visibleWeightChange > 0 ? "+" : ""}${visibleWeightChange.toFixed(1)} kg`;
+
+  return (
+    <div className="dashboard-layout">
+      <FocusStage className="dashboard-focus">
+        <div className="focus-stage-head">
+          <div>
+            <span className="stage-label">Latest weight</span>
+            <strong className="stage-value data-value">
+              {latestBody ? Number(latestBody.weight).toFixed(1) : "--"}
+              <small> kg</small>
+            </strong>
+            <p>{latestBody ? formatDate(latestBody.log_date) : "No weigh-in yet"}</p>
+          </div>
+          <div className="segmented segmented-dark" aria-label="Weight range">
+            {[30, 60, 90].map((days) => (
+              <button
+                key={days}
+                className={range === days ? "active" : ""}
+                onClick={() => setRange(days)}
+              >
+                {days}D
+              </button>
+            ))}
+          </div>
+        </div>
+        <WeightChart logs={bodyLogs} range={range} />
+        <div className="trend-meta trend-meta-dark">
+          <div>
+            <span>Change</span>
+            <strong className="data-value">{visibleWeightChangeLabel}</strong>
+          </div>
+        </div>
+      </FocusStage>
+
+      <div className="dashboard-after-grid">
+        <section className="stat-grid dashboard-support-stats">
+          <Stat label="Today" value={workoutStatusLabel(todayWorkout)} detail={didWorkoutToday ? `${workoutSets} sets - ${todayWorkout?.exercises?.length || 0} exercises - ${todayPrs} PR sets` : "No exercise sets logged today"} />
+          <Stat label="Steps Today" value={todaySteps ? todaySteps.toLocaleString() : "--"} detail={todaySteps ? "Logged today" : "No steps yet"} />
+          <Stat label="This Week" value={`${weekDays} days`} detail="Workout days since Monday" />
+          <Stat label="This Month" value={`${monthDays} days`} detail="Workout days this month" />
+        </section>
+
+        <section className="panel-section pr-panel">
+          <div className="section-head">
+            <h2>Recent PRs</h2>
+          </div>
+          <div className="list pr-list">
+            {recentPrs.length ? recentPrs.map((pr) => {
+              const typeLabel = workoutTypeLabel(pr.split);
+              return (
+                <div className="row" key={pr.id}>
+                  <div>
+                    <strong>{pr.exercise}</strong>
+                    <span>{formatDate(pr.date)}{typeLabel ? ` - ${typeLabel}` : ""}</span>
+                  </div>
+                  <b>{formatSet(pr, pr.trackingType)}</b>
+                </div>
+              );
+            }) : <Empty text="No PRs yet." />}
+          </div>
+        </section>
+      </div>
     </div>
   );
 }
@@ -749,15 +826,7 @@ function DailyView({ workouts, bodyLogs, selectedDate, setSelectedDate, calendar
             selectedDate={selectedDate}
             setSelectedDate={setSelectedDate}
           />
-        ) : (
-          <CalendarGrid
-            month={calendarMonth}
-            workouts={workouts}
-            bodyLogs={bodyLogs}
-            selectedDate={selectedDate}
-            setSelectedDate={setSelectedDate}
-          />
-        )}
+        ) : null}
       </section>
 
       <FocusStage className="log-focus">
@@ -765,6 +834,18 @@ function DailyView({ workouts, bodyLogs, selectedDate, setSelectedDate, calendar
         <h2>Workout</h2>
         <DayWorkoutDetails workout={selectedLog} bodyLog={selectedBodyLog} />
       </FocusStage>
+
+      {calendarMode === "month" ? (
+        <section className="panel-section month-calendar-panel">
+          <CalendarGrid
+            month={calendarMonth}
+            workouts={workouts}
+            bodyLogs={bodyLogs}
+            selectedDate={selectedDate}
+            setSelectedDate={setSelectedDate}
+          />
+        </section>
+      ) : null}
     </>
   );
 }
@@ -1481,6 +1562,16 @@ function SetupMissing() {
   );
 }
 
+function Stat({ label, value, detail }) {
+  return (
+    <article className="stat">
+      <span>{label}</span>
+      <strong>{value}</strong>
+      <small>{detail}</small>
+    </article>
+  );
+}
+
 function Empty({ text }) {
   return <div className="empty">{text}</div>;
 }
@@ -1502,6 +1593,31 @@ function upsertExercise(workouts, workoutId, exercise) {
 
 function sortWorkouts(workouts) {
   return workouts.slice().sort((a, b) => b.workout_date.localeCompare(a.workout_date));
+}
+
+function weekStartKey() {
+  const now = new Date();
+  const day = (now.getDay() + 6) % 7;
+  now.setDate(now.getDate() - day);
+  return dateKey(now);
+}
+
+function monthStartKey() {
+  const now = new Date();
+  return dateKey(new Date(now.getFullYear(), now.getMonth(), 1));
+}
+
+function workoutDaysWithin(workouts, startDate, endDate) {
+  return workouts.filter((workout) => workout.workout_date >= startDate && workout.workout_date <= endDate && hasWorkoutActivity(workout)).length;
+}
+
+function bodyTrend(entry, logs) {
+  const index = logs.findIndex((item) => item.id === entry.id);
+  const previous = logs[index - 1];
+  if (!previous) return "First";
+  const delta = Number(entry.weight) - Number(previous.weight);
+  if (Math.abs(delta) < 0.05) return "Even";
+  return `${delta > 0 ? "+" : ""}${delta.toFixed(1)} kg`;
 }
 
 function dailyMeta(workout, bodyLog) {
