@@ -5,6 +5,7 @@ import { readFileSync } from "node:fs";
 const appSource = readFileSync(new URL("./App.jsx", import.meta.url), "utf8");
 const workoutSource = readFileSync(new URL("./WorkoutView.jsx", import.meta.url), "utf8");
 const strengthSource = readFileSync(new URL("./StrengthSession.jsx", import.meta.url), "utf8");
+const stylesSource = readFileSync(new URL("./styles.css", import.meta.url), "utf8");
 
 test("Workout is a focused session instead of a suggestion panel", () => {
   assert.equal(appSource.includes('from "./WorkoutView"'), true);
@@ -28,4 +29,10 @@ test("Strength session supports reps-only push-ups", () => {
   assert.equal(strengthSource.includes('trackingType === "bodyweight"'), true);
   assert.equal(strengthSource.includes("canConfirmSet(current, trackingType)"), true);
   assert.equal(strengthSource.includes("normalizeExerciseName(item.name) === normalizeExerciseName(exercise.name)"), true);
+});
+
+
+test("Past history set rows keep set number visually separate from reps", () => {
+  assert.match(stylesSource, /\.past-set-row\s*\{[\s\S]*grid-template-columns:\s*32px\s+minmax\(0,\s*1fr\)/);
+  assert.match(stylesSource, /\.past-set-row\s*\{[\s\S]*gap:\s*12px/);
 });
