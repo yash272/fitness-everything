@@ -70,7 +70,7 @@ const progressivePush = buildProgressivePlanForSplit({
   workouts: history
 });
 
-assert.equal(progressivePush.exercises.length, 5);
+assert.equal(progressivePush.exercises.length, 6);
 assert.deepEqual(progressivePush.exercises[0].sets, [
   { reps: "7", weight: "45", duration: "" },
   { reps: "7", weight: "45", duration: "" },
@@ -110,8 +110,16 @@ assert.deepEqual(pushPlan.exercises.map((exercise) => exercise.name), [
   "Incline Dumbbell Press",
   "Dumbbell Shoulder Press",
   "Lateral Raise",
-  "Triceps Rope Pushdown"
+  "Triceps Rope Pushdown",
+  "Push-ups"
 ]);
+const pushUps = pushPlan.exercises.find((exercise) => exercise.name === "Push-ups");
+assert.equal(pushUps.trackingType, "bodyweight");
+assert.deepEqual(pushUps.sets, [
+  { reps: "12", weight: "", duration: "" },
+  { reps: "10", weight: "", duration: "" }
+]);
+assert.equal(formatSuggestedPrescription(pushUps), "12 reps / 10 reps");
 assert.deepEqual(pushPlan.exercises[0].sets, [
   { reps: "7", weight: "40", duration: "" },
   { reps: "7", weight: "40", duration: "" },
@@ -156,6 +164,8 @@ assert.deepEqual(restoredPullPlan.exercises.map((exercise) => exercise.name), [
 assert.equal(restoredPullPlan.exercises[0].sets[0].weight, "120");
 assert.notDeepEqual(restoredPullPlan, editedPullPlan);
 assert.equal(restoreSuggestedPlanForSplit("Sports"), null);
+assert.equal(restoreSuggestedPlanForSplit("Push").exercises.at(-1).name, "Push-ups");
+assert.equal(restoreSuggestedPlanForSplit("Push").exercises.at(-1).trackingType, "bodyweight");
 
 
 const mutated = buildSuggestedPlanForSplit("Push");

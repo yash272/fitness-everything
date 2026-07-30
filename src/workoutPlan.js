@@ -7,7 +7,8 @@ export const WORKOUT_PLAN_TEMPLATES = {
       weightedExercise("Incline Dumbbell Press", [set("7", "35"), set("7", "35"), set("7", "35")], "Build this to 3x10 before increasing."),
       weightedExercise("Dumbbell Shoulder Press", [set("10", "30"), set("10", "30"), set("10", "30")], "If tired, make this 2 sets and keep reps clean."),
       weightedExercise("Lateral Raise", [set("15", "15"), set("15", "15"), set("15", "15")], "No recent log; start strict. Increase only after 20,20,20 without swinging."),
-      weightedExercise("Triceps Rope Pushdown", [set("10", "37.5"), set("10", "37.5"), set("10", "37.5")], "Use full lockout and controlled return.")
+      weightedExercise("Triceps Rope Pushdown", [set("10", "37.5"), set("10", "37.5"), set("10", "37.5")], "Use full lockout and controlled return."),
+      bodyweightExercise("Push-ups", [bodyweightSet("12"), bodyweightSet("10")], "Optional finisher; log reps only so it stays visible in history without a fake 0 lb weight.")
     ]
   },
   Pull: {
@@ -78,7 +79,7 @@ function compareWeightedSets(a, b) {
 }
 
 function normalizeExerciseName(name) {
-  return String(name || "").trim().toLowerCase();
+  return String(name || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
 }
 
 function validWeightedSets(exercise) {
@@ -151,6 +152,13 @@ export function buildProgressivePlanForSplit({ split, selectedDate, workouts = [
 export function formatSuggestedPrescription(exercise) {
   const sets = exercise?.sets || [];
   if (!sets.length) return "No target";
+  if ((exercise?.trackingType || exercise?.tracking_type) === "bodyweight") {
+    if (sets.some((set) => !set.reps)) return "Set target";
+    const firstBodyweight = sets[0];
+    const identicalBodyweight = sets.every((set) => String(set.reps) === String(firstBodyweight.reps));
+    if (identicalBodyweight) return `${sets.length} x ${firstBodyweight.reps} reps`;
+    return sets.map((set) => `${set.reps} reps`).join(" / ");
+  }
   if (sets.some((set) => set.weight === "" || set.weight === null || set.weight === undefined || !set.reps)) {
     return "Set target";
   }
@@ -200,6 +208,14 @@ function weightedExercise(name, sets, note) {
   return { name, trackingType: "weighted", sets, note };
 }
 
+function bodyweightExercise(name, sets, note) {
+  return { name, trackingType: "bodyweight", sets, note };
+}
+
 function set(reps, weight) {
   return { reps, weight, duration: "" };
+}
+
+function bodyweightSet(reps) {
+  return { reps, weight: "", duration: "" };
 }
