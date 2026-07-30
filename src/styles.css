@@ -2790,6 +2790,47 @@ select:focus {
   font-size: 0.8rem;
 }
 
+.history-exercise-list {
+  display: grid;
+  gap: 10px;
+}
+
+.history-exercise-card {
+  border-bottom: 1px solid var(--line);
+}
+
+.history-exercise-summary {
+  cursor: default;
+}
+
+.past-set-list {
+  display: grid;
+  padding: 0 0 12px 42px;
+}
+
+.past-set-row {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  gap: 12px;
+  align-items: baseline;
+  min-height: 34px;
+  border-top: 1px solid var(--line-soft);
+}
+
+.past-set-row > span:first-child {
+  color: var(--faint);
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.72rem;
+  text-align: center;
+}
+
+.past-set-row b {
+  color: var(--text);
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+}
+
 @media (max-width: 620px) {
   .session-type-choices {
     display: flex;
