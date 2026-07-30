@@ -7,7 +7,8 @@ export const WORKOUT_PLAN_TEMPLATES = {
       weightedExercise("Incline Dumbbell Press", [set("7", "35"), set("7", "35"), set("7", "35")], "Build this to 3x10 before increasing."),
       weightedExercise("Dumbbell Shoulder Press", [set("10", "30"), set("10", "30"), set("10", "30")], "If tired, make this 2 sets and keep reps clean."),
       weightedExercise("Lateral Raise", [set("15", "15"), set("15", "15"), set("15", "15")], "No recent log; start strict. Increase only after 20,20,20 without swinging."),
-      weightedExercise("Triceps Rope Pushdown", [set("10", "37.5"), set("10", "37.5"), set("10", "37.5")], "Use full lockout and controlled return.")
+      weightedExercise("Triceps Rope Pushdown", [set("10", "37.5"), set("10", "37.5"), set("10", "37.5")], "Use full lockout and controlled return."),
+      bodyweightExercise("Push-ups", [bodyweightSet("12"), bodyweightSet("10")], "Optional finisher; log reps only so it stays visible in history without a fake 0 lb weight.")
     ]
   },
   Pull: {
@@ -200,6 +201,14 @@ function weightedExercise(name, sets, note) {
   return { name, trackingType: "weighted", sets, note };
 }
 
+function bodyweightExercise(name, sets, note) {
+  return { name, trackingType: "bodyweight", sets, note };
+}
+
 function set(reps, weight) {
   return { reps, weight, duration: "" };
+}
+
+function bodyweightSet(reps) {
+  return { reps, weight: "", duration: "" };
 }

@@ -22,7 +22,7 @@ import { hasWorkoutActivity, toggleWorkoutType, workoutActivityFlag, workoutStag
 
 const DEFAULT_WORKOUT_TYPES = ["Push", "Pull", "Legs", "Cardio", "Sports", "Mobility"];
 const DEFAULT_EXERCISES = {
-  Push: ["Flat Dumbbell Bench Press", "Incline Dumbbell Press", "Dumbbell Shoulder Press", "Lateral Raise", "Triceps Rope Pushdown"],
+  Push: ["Flat Dumbbell Bench Press", "Incline Dumbbell Press", "Dumbbell Shoulder Press", "Lateral Raise", "Triceps Rope Pushdown", "Push-ups"],
   Pull: ["Lat Pulldown", "Low Row", "Machine Rear Delt", "Bicep Curl", "Hammer Curl"],
   Legs: ["Leg Extension", "Goblet Squats", "Leg Curls", "Romanian Deadlift", "Calf Raise"],
   Cardio: ["Treadmill", "Bike", "Rowing", "Stair Climber", "Elliptical"],
