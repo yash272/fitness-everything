@@ -2,6 +2,10 @@ import { Check, ChevronDown, ChevronUp, Plus, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { findNextIncompleteExerciseIndex, pairedSetRows, sessionDraftStorageKey } from "./sessionDraft";
 
+function normalizeExerciseName(name) {
+  return String(name || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
+}
+
 function normalizePersistedSet(set) {
   return {
     id: set.id,
@@ -15,7 +19,7 @@ function normalizePersistedSet(set) {
 function mergePersistedSets(exercises, persistedWorkout) {
   return exercises.map((exercise) => {
     const persisted = persistedWorkout?.exercises?.find(
-      (item) => item.name.trim().toLowerCase() === exercise.name.trim().toLowerCase()
+      (item) => normalizeExerciseName(item.name) === normalizeExerciseName(exercise.name)
     );
     if (!persisted?.exercise_sets?.length) return exercise;
     const savedSets = persisted.exercise_sets.map(normalizePersistedSet);
@@ -34,9 +38,16 @@ function loadDraft(baseDraft) {
   return baseDraft;
 }
 
-function formatPrevious(set) {
+function formatPrevious(set, trackingType = "weighted") {
   if (!set) return "--";
+  if (trackingType === "bodyweight" || set.weight === null || set.weight === undefined || set.weight === "") return `${Number(set.reps || 0)} reps`;
   return `${Number(set.weight)} x ${Number(set.reps)}`;
+}
+
+function canConfirmSet(set, trackingType = "weighted") {
+  if (!set) return false;
+  if (trackingType === "bodyweight") return Boolean(set.reps);
+  return Boolean(set.weight && set.reps);
 }
 
 export default function StrengthSession({
@@ -101,7 +112,7 @@ export default function StrengthSession({
   async function removeExercise(exerciseIndex) {
     const exercise = exercises[exerciseIndex];
     const persisted = persistedWorkout?.exercises?.find(
-      (item) => item.name.trim().toLowerCase() === exercise.name.trim().toLowerCase()
+      (item) => normalizeExerciseName(item.name) === normalizeExerciseName(exercise.name)
     );
     if (persisted) await onDeleteExercise(persisted.id);
     setExercises((current) => current.filter((_item, index) => index !== exerciseIndex));
@@ -142,6 +153,7 @@ export default function StrengthSession({
       <div className="strength-exercises">
         {exercises.map((exercise, exerciseIndex) => {
           const isActive = activeIndex === exerciseIndex;
+          const trackingType = exercise.trackingType || "weighted";
           const savedCount = exercise.sets.filter((set) => set.id).length;
           return (
             <article className={`session-exercise ${isActive ? "active" : ""}`} key={exercise.key}>
@@ -167,15 +179,17 @@ export default function StrengthSession({
                       <div className="paired-set-row" key={current?.id || `${exercise.key}-${setIndex}`}>
                         <span>{setIndex + 1}</span>
                         <div className="previous-set">
-                          <b>{formatPrevious(previous)}</b>
+                          <b>{formatPrevious(previous, trackingType)}</b>
                           {exercise.previousDate ? <small>{exercise.previousDate}</small> : null}
                         </div>
                         {current ? (
                           <div className="today-set">
-                            <label>
-                              <input type="number" min="0" step="2.5" inputMode="decimal" value={current.weight} placeholder="lb" onChange={(event) => updateSet(exerciseIndex, setIndex, "weight", event.target.value)} aria-label={`${exercise.name} set ${setIndex + 1} weight`} />
-                              <span>lb</span>
-                            </label>
+                            {trackingType === "weighted" ? (
+                              <label>
+                                <input type="number" min="0" step="2.5" inputMode="decimal" value={current.weight} placeholder="lb" onChange={(event) => updateSet(exerciseIndex, setIndex, "weight", event.target.value)} aria-label={`${exercise.name} set ${setIndex + 1} weight`} />
+                                <span>lb</span>
+                              </label>
+                            ) : null}
                             <label>
                               <input type="number" min="1" step="1" inputMode="numeric" value={current.reps} placeholder="reps" onChange={(event) => updateSet(exerciseIndex, setIndex, "reps", event.target.value)} aria-label={`${exercise.name} set ${setIndex + 1} reps`} />
                               <span>reps</span>
@@ -185,7 +199,7 @@ export default function StrengthSession({
                         ) : <div className="today-set empty">No target</div>}
                         {current ? (
                           <div className="set-actions">
-                            <button type="button" className={`confirm-set ${current.id ? "saved" : ""}`} onClick={() => confirmSet(exerciseIndex, setIndex)} disabled={saving || !current.weight || !current.reps} aria-label={`${current.id ? "Update" : "Confirm"} ${exercise.name} set ${setIndex + 1}`}>
+                            <button type="button" className={`confirm-set ${current.id ? "saved" : ""}`} onClick={() => confirmSet(exerciseIndex, setIndex)} disabled={saving || !canConfirmSet(current, trackingType)} aria-label={`${current.id ? "Update" : "Confirm"} ${exercise.name} set ${setIndex + 1}`}>
                               <Check size={17} />
                             </button>
                             {current.id ? (

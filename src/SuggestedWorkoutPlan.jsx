@@ -29,9 +29,11 @@ export default function SuggestedWorkoutPlan({
   const [expandedIndex, setExpandedIndex] = useState(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef(null);
-  const canLogExercise = (exercise) =>
-    exercise.name.trim() &&
-    exercise.sets.some((set) => set.reps && set.weight !== "");
+  const canLogExercise = (exercise) => {
+    if (!exercise.name.trim()) return false;
+    if (exercise.trackingType === "bodyweight") return exercise.sets.some((set) => set.reps);
+    return exercise.sets.some((set) => set.reps && set.weight !== "");
+  };
 
   useEffect(() => {
     if (expandedIndex !== null && expandedIndex >= plan.exercises.length) {
@@ -205,19 +207,21 @@ export default function SuggestedWorkoutPlan({
                             }
                           />
                         </label>
-                        <label>
-                          Lbs
-                          <input
-                            type="number"
-                            min="0"
-                            step="2.5"
-                            inputMode="decimal"
-                            value={set.weight}
-                            onChange={(event) =>
-                              updateSet(exerciseIndex, setIndex, "weight", event.target.value)
-                            }
-                          />
-                        </label>
+                        {exercise.trackingType === "weighted" ? (
+                          <label>
+                            Lbs
+                            <input
+                              type="number"
+                              min="0"
+                              step="2.5"
+                              inputMode="decimal"
+                              value={set.weight}
+                              onChange={(event) =>
+                                updateSet(exerciseIndex, setIndex, "weight", event.target.value)
+                              }
+                            />
+                          </label>
+                        ) : null}
                         <button
                           type="button"
                           className="danger icon-only"

@@ -256,7 +256,7 @@ function Tracker() {
     workouts.forEach((workout) => {
       if (workout.workout_date >= beforeDate) return;
       workout.exercises?.forEach((exercise) => {
-        if (exercise.name.toLowerCase() !== exerciseName.toLowerCase()) return;
+        if (exercise.name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "") !== String(exerciseName || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "")) return;
         const type = exercise.tracking_type || "weighted";
         if (type !== trackingType) return;
         exercise.exercise_sets?.forEach((set) => {
@@ -378,7 +378,7 @@ function Tracker() {
     try {
       const workout = await ensureWorkoutForDate(date, split, { did_workout: true });
       let persistedExercise = (workout.exercises || []).find(
-        (item) => item.name.trim().toLowerCase() === exercise.name.trim().toLowerCase()
+        (item) => item.name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "") === exercise.name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "")
       );
 
       if (!persistedExercise) {
@@ -714,6 +714,7 @@ function Tracker() {
         {!loading && activeView === "workout" && (
           <WorkoutView
             date={workoutDate}
+            readOnly={workoutDate !== todayKey()}
             selectedSplit={workoutTypeForEdit(selectedWorkout)}
             workout={selectedWorkout}
             workouts={workouts}

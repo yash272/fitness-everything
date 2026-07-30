@@ -48,7 +48,7 @@ test("draft uses every set from the latest matching same-split session", () => {
     workouts
   });
 
-  assert.equal(draft.exercises.length, 5);
+  assert.equal(draft.exercises.length, 6);
   assert.equal(draft.exercises[0].previousDate, "2026-07-26");
   assert.deepEqual(draft.exercises[0].previousSets.map(({ reps, weight }) => ({ reps, weight })), [
     { reps: 10, weight: 40 },
@@ -62,6 +62,33 @@ test("draft uses every set from the latest matching same-split session", () => {
     duration: "",
     is_pr: false
   });
+});
+
+
+test("draft matches bodyweight push-up history across common spellings", () => {
+  const draft = buildStrengthSessionDraft({
+    split: "Push",
+    selectedDate: "2026-07-29",
+    workouts: [{
+      workout_date: "2026-07-27",
+      split: "Push",
+      exercises: [{
+        name: "Push Ups",
+        tracking_type: "bodyweight",
+        exercise_sets: [
+          { id: "push-1", reps: 14, weight: null, logged_at: "2026-07-27T10:00:00Z" },
+          { id: "push-2", reps: 11, weight: null, logged_at: "2026-07-27T10:02:00Z" }
+        ]
+      }]
+    }]
+  });
+
+  const pushUps = draft.exercises.find((exercise) => exercise.name === "Push-ups");
+  assert.equal(pushUps.previousDate, "2026-07-27");
+  assert.deepEqual(pushUps.previousSets.map(({ reps, weight }) => ({ reps, weight })), [
+    { reps: 14, weight: null },
+    { reps: 11, weight: null }
+  ]);
 });
 
 test("pairedSetRows keeps unmatched rows visible", () => {

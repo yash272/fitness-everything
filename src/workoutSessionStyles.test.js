@@ -15,3 +15,17 @@ test("Workout is a focused session instead of a suggestion panel", () => {
   assert.equal(strengthSource.includes("New best"), true);
   assert.equal(workoutSource.includes("setId: durationSet?.id"), true);
 });
+
+
+test("Past workout dates render as read-only history instead of active checklist", () => {
+  assert.equal(appSource.includes("readOnly={workoutDate !== todayKey()}"), true);
+  assert.equal(workoutSource.includes("PastWorkoutHistory"), true);
+  assert.equal(workoutSource.includes("history-exercise-list"), true);
+  assert.equal(workoutSource.includes("formatHistorySet"), true);
+});
+
+test("Strength session supports reps-only push-ups", () => {
+  assert.equal(strengthSource.includes('trackingType === "bodyweight"'), true);
+  assert.equal(strengthSource.includes("canConfirmSet(current, trackingType)"), true);
+  assert.equal(strengthSource.includes("normalizeExerciseName(item.name) === normalizeExerciseName(exercise.name)"), true);
+});

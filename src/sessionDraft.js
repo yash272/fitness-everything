@@ -1,7 +1,7 @@
 import { buildProgressivePlanForSplit, canonicalSplit } from "./workoutPlan.js";
 
 function normalizeName(name) {
-  return String(name || "").trim().toLowerCase();
+  return String(name || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
 }
 
 function latestMatchingExercise(workouts, split, selectedDate, exerciseName) {

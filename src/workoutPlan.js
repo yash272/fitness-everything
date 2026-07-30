@@ -79,7 +79,7 @@ function compareWeightedSets(a, b) {
 }
 
 function normalizeExerciseName(name) {
-  return String(name || "").trim().toLowerCase();
+  return String(name || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
 }
 
 function validWeightedSets(exercise) {
@@ -152,6 +152,13 @@ export function buildProgressivePlanForSplit({ split, selectedDate, workouts = [
 export function formatSuggestedPrescription(exercise) {
   const sets = exercise?.sets || [];
   if (!sets.length) return "No target";
+  if ((exercise?.trackingType || exercise?.tracking_type) === "bodyweight") {
+    if (sets.some((set) => !set.reps)) return "Set target";
+    const firstBodyweight = sets[0];
+    const identicalBodyweight = sets.every((set) => String(set.reps) === String(firstBodyweight.reps));
+    if (identicalBodyweight) return `${sets.length} x ${firstBodyweight.reps} reps`;
+    return sets.map((set) => `${set.reps} reps`).join(" / ");
+  }
   if (sets.some((set) => set.weight === "" || set.weight === null || set.weight === undefined || !set.reps)) {
     return "Set target";
   }
