@@ -1,10 +1,7 @@
 import { Check, ChevronDown, ChevronUp, Plus, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { findNextIncompleteExerciseIndex, pairedSetRows, sessionDraftStorageKey } from "./sessionDraft";
-
-function normalizeExerciseName(name) {
-  return String(name || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
-}
+import { canConfirmSet, normalizeExerciseName, trackingTypeForSet } from "./strengthSessionUtils";
 
 function normalizePersistedSet(set) {
   return {
@@ -42,12 +39,6 @@ function formatPrevious(set, trackingType = "weighted") {
   if (!set) return "--";
   if (trackingType === "bodyweight" || set.weight === null || set.weight === undefined || set.weight === "") return `${Number(set.reps || 0)} reps`;
   return `${Number(set.weight)} x ${Number(set.reps)}`;
-}
-
-function canConfirmSet(set, trackingType = "weighted") {
-  if (!set) return false;
-  if (trackingType === "bodyweight") return Boolean(set.reps);
-  return Boolean(set.weight && set.reps);
 }
 
 export default function StrengthSession({
@@ -94,7 +85,8 @@ export default function StrengthSession({
 
   async function confirmSet(exerciseIndex, setIndex) {
     const exercise = exercises[exerciseIndex];
-    const savedSet = await onSaveSet(exercise, exercise.sets[setIndex]);
+    const set = exercise.sets[setIndex];
+    const savedSet = await onSaveSet({ ...exercise, trackingType: trackingTypeForSet(exercise, set) }, set);
     if (!savedSet) return;
 
     const normalized = normalizePersistedSet(savedSet);
@@ -134,6 +126,7 @@ export default function StrengthSession({
       key: `custom-${Date.now()}`,
       name,
       trackingType: "weighted",
+      isCustom: true,
       previousDate: null,
       previousSets: [],
       sets: [{ id: null, reps: "10", weight: "", duration: "", is_pr: false }],
@@ -186,8 +179,8 @@ export default function StrengthSession({
                           <div className="today-set">
                             {trackingType === "weighted" ? (
                               <label>
-                                <input type="number" min="0" step="2.5" inputMode="decimal" value={current.weight} placeholder="lb" onChange={(event) => updateSet(exerciseIndex, setIndex, "weight", event.target.value)} aria-label={`${exercise.name} set ${setIndex + 1} weight`} />
-                                <span>lb</span>
+                                <input type="number" min="0" step="2.5" inputMode="decimal" value={current.weight} placeholder={exercise.isCustom ? "optional" : "lb"} onChange={(event) => updateSet(exerciseIndex, setIndex, "weight", event.target.value)} aria-label={`${exercise.name} set ${setIndex + 1} weight`} />
+                                <span>{exercise.isCustom ? "lb optional" : "lb"}</span>
                               </label>
                             ) : null}
                             <label>
@@ -199,7 +192,7 @@ export default function StrengthSession({
                         ) : <div className="today-set empty">No target</div>}
                         {current ? (
                           <div className="set-actions">
-                            <button type="button" className={`confirm-set ${current.id ? "saved" : ""}`} onClick={() => confirmSet(exerciseIndex, setIndex)} disabled={saving || !canConfirmSet(current, trackingType)} aria-label={`${current.id ? "Update" : "Confirm"} ${exercise.name} set ${setIndex + 1}`}>
+                            <button type="button" className={`confirm-set ${current.id ? "saved" : ""}`} onClick={() => confirmSet(exerciseIndex, setIndex)} disabled={saving || !canConfirmSet(current, trackingType, exercise.isCustom)} aria-label={`${current.id ? "Update" : "Confirm"} ${exercise.name} set ${setIndex + 1}`}>
                               <Check size={17} />
                             </button>
                             {current.id ? (
