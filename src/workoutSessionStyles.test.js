@@ -36,3 +36,8 @@ test("custom reps-only exercises can be saved without pounds", () => {
   assert.equal(canConfirmSet({ reps: "40", weight: "" }, "weighted", true), true);
   assert.equal(trackingTypeForSet(customPushUps, { reps: "40", weight: "" }), "bodyweight");
 });
+
+test("custom exercise weight field stays compact", () => {
+  assert.equal(strengthSource.includes("optional"), false);
+  assert.equal(strengthSource.includes('placeholder="lb"'), true);
+});

@@ -179,8 +179,8 @@ export default function StrengthSession({
                           <div className="today-set">
                             {trackingType === "weighted" ? (
                               <label>
-                                <input type="number" min="0" step="2.5" inputMode="decimal" value={current.weight} placeholder={exercise.isCustom ? "optional" : "lb"} onChange={(event) => updateSet(exerciseIndex, setIndex, "weight", event.target.value)} aria-label={`${exercise.name} set ${setIndex + 1} weight`} />
-                                <span>{exercise.isCustom ? "lb optional" : "lb"}</span>
+                                <input type="number" min="0" step="2.5" inputMode="decimal" value={current.weight} placeholder="lb" onChange={(event) => updateSet(exerciseIndex, setIndex, "weight", event.target.value)} aria-label={`${exercise.name} set ${setIndex + 1} weight`} />
+                                <span>lb</span>
                               </label>
                             ) : null}
                             <label>
