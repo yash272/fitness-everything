@@ -1,6 +1,6 @@
 import { Check, ChevronDown, ChevronUp, Plus, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { findNextIncompleteExerciseIndex, isSessionExerciseComplete, orderSessionExercises, pairedSetRows, sessionDraftStorageKey } from "./sessionDraft";
+import { buildCustomExerciseFromHistory, findNextIncompleteExerciseIndex, isSessionExerciseComplete, orderSessionExercises, pairedSetRows, sessionDraftStorageKey } from "./sessionDraft";
 import { canConfirmSet, normalizeExerciseName, trackingTypeForSet } from "./strengthSessionUtils";
 
 function normalizePersistedSet(set) {
@@ -53,6 +53,13 @@ export default function StrengthSession({
   const [exercises, setExercises] = useState(() => orderSessionExercises(mergePersistedSets(initialDraft.exercises, persistedWorkout)));
   const [activeIndex, setActiveIndex] = useState(0);
   const [newExerciseName, setNewExerciseName] = useState("");
+  const exerciseHistorySuggestions = useMemo(() => {
+    const query = newExerciseName.trim().toLowerCase();
+    if (!query) return [];
+    return (draft.exerciseOptions || [])
+      .filter((option) => option.name.toLowerCase().includes(query))
+      .slice(0, 5);
+  }, [draft.exerciseOptions, newExerciseName]);
 
   useEffect(() => {
     setExercises(orderSessionExercises(mergePersistedSets(loadDraft(draft).exercises, persistedWorkout)));
@@ -118,10 +125,10 @@ export default function StrengthSession({
     } : exercise)));
   }
 
-  function addExercise() {
-    const name = newExerciseName.trim();
+  function addExercise(historyOption = null) {
+    const name = historyOption?.name || newExerciseName.trim();
     if (!name) return;
-    setExercises((current) => orderSessionExercises([{
+    const exercise = historyOption ? buildCustomExerciseFromHistory(historyOption) : {
       key: `custom-${Date.now()}`,
       name,
       trackingType: "weighted",
@@ -130,7 +137,8 @@ export default function StrengthSession({
       previousSets: [],
       sets: [{ id: null, reps: "10", weight: "", duration: "", is_pr: false }],
       progression: { label: "Custom" }
-    }, ...current]));
+    };
+    setExercises((current) => orderSessionExercises([exercise, ...current]));
     setActiveIndex(0);
     setNewExerciseName("");
   }
@@ -229,11 +237,26 @@ export default function StrengthSession({
         ) : null)}
       </div>
 
-      <div className="add-session-exercise">
-        <input value={newExerciseName} onChange={(event) => setNewExerciseName(event.target.value)} placeholder="Add another exercise" onKeyDown={(event) => {
-          if (event.key === "Enter") addExercise();
-        }} aria-label="New exercise name" />
-        <button type="button" onClick={addExercise} disabled={!newExerciseName.trim()} aria-label="Add exercise"><Plus size={18} /></button>
+      <div className="add-session-exercise-wrap">
+        <div className="add-session-exercise">
+          <input value={newExerciseName} onChange={(event) => setNewExerciseName(event.target.value)} placeholder="Add another exercise" onKeyDown={(event) => {
+            if (event.key === "Enter") addExercise(exerciseHistorySuggestions[0] || null);
+          }} aria-label="New exercise name" />
+          <button type="button" onClick={() => addExercise(exerciseHistorySuggestions[0] || null)} disabled={!newExerciseName.trim()} aria-label="Add exercise"><Plus size={18} /></button>
+        </div>
+        {exerciseHistorySuggestions.length ? (
+          <div className="exercise-history-suggestions" aria-label="Previous exercises">
+            {exerciseHistorySuggestions.map((option) => (
+              <button type="button" key={`${option.sourceDate}-${option.name}`} onClick={() => addExercise(option)}>
+                <span>
+                  <strong>{option.name}</strong>
+                  <small>{option.split} · {option.sourceDate} · {option.previousSets.length} previous sets</small>
+                </span>
+                <b>{option.trackingType === "bodyweight" ? "reps" : option.trackingType === "time" ? "time" : "+2"}</b>
+              </button>
+            ))}
+          </div>
+        ) : null}
       </div>
     </section>
   );

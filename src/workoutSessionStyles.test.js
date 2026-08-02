@@ -55,3 +55,10 @@ test("strength session renders pending and done exercise sections", () => {
   assert.equal(strengthSource.includes('setActiveIndex(isActive ? -1 : exerciseIndex)'), true);
   assert.equal(strengthSource.includes('orderSessionExercises'), true);
 });
+
+
+test("custom exercise input shows history suggestions", () => {
+  assert.equal(strengthSource.includes('exercise-history-suggestions'), true);
+  assert.equal(strengthSource.includes('buildCustomExerciseFromHistory'), true);
+  assert.equal(strengthSource.includes('previousSets.length'), true);
+});
