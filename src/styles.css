@@ -2544,7 +2544,46 @@ select:focus {
 }
 
 .strength-exercises {
+  display: grid;
+  gap: 14px;
   border-top: 1px solid var(--line);
+}
+
+.session-exercise-section {
+  display: grid;
+  border-bottom: 1px solid var(--line);
+}
+
+.session-exercise-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0 6px;
+  color: var(--muted);
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.session-exercise-section-head b {
+  display: inline-flex;
+  min-width: 22px;
+  justify-content: center;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: var(--surface-muted);
+  color: var(--muted);
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.62rem;
+}
+
+.session-exercise.done .session-exercise-summary {
+  color: var(--muted);
+}
+
+.session-exercise.done .session-exercise-summary > span:first-child {
+  color: var(--accent-text);
 }
 
 .session-exercise {
