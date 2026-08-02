@@ -1,7 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  buildCustomExerciseFromHistory,
   buildStrengthSessionDraft,
+  exerciseHistoryOptions,
   findNextIncompleteExerciseIndex,
   orderSessionExercises,
   pairedSetRows,
@@ -139,4 +141,67 @@ test("new custom exercises can be pinned to the top of the pending list", () => 
     "bench",
     "press"
   ]);
+});
+
+
+test("custom exercise history options search across splits before the selected date", () => {
+  const options = exerciseHistoryOptions({
+    selectedDate: "2026-07-29",
+    query: "leg ex",
+    workouts: [{
+      workout_date: "2026-07-27",
+      split: "Legs",
+      exercises: [{
+        name: "Leg Extension",
+        tracking_type: "weighted",
+        exercise_sets: [
+          { id: "leg-1", reps: 10, weight: 145, logged_at: "2026-07-27T10:00:00Z" },
+          { id: "leg-2", reps: 10, weight: 130, logged_at: "2026-07-27T10:02:00Z" }
+        ]
+      }]
+    }, {
+      workout_date: "2026-07-30",
+      split: "Legs",
+      exercises: [{ name: "Leg Extension", tracking_type: "weighted", exercise_sets: [{ id: "future", reps: 12, weight: 200 }] }]
+    }]
+  });
+
+  assert.equal(options.length, 1);
+  assert.equal(options[0].name, "Leg Extension");
+  assert.equal(options[0].sourceDate, "2026-07-27");
+  assert.equal(options[0].split, "Legs");
+  assert.deepEqual(options[0].previousSets.map(({ reps, weight }) => ({ reps, weight })), [
+    { reps: 10, weight: 145 },
+    { reps: 10, weight: 130 }
+  ]);
+});
+
+test("custom exercise from history carries previous sets and plus-two targets", () => {
+  const option = exerciseHistoryOptions({
+    selectedDate: "2026-07-29",
+    query: "extension",
+    workouts: [{
+      workout_date: "2026-07-27",
+      split: "Legs",
+      exercises: [{
+        name: "Leg Extension",
+        tracking_type: "weighted",
+        exercise_sets: [
+          { id: "leg-1", reps: 10, weight: 145, logged_at: "2026-07-27T10:00:00Z" },
+          { id: "leg-2", reps: 12, weight: 130, logged_at: "2026-07-27T10:02:00Z" }
+        ]
+      }]
+    }]
+  })[0];
+
+  const exercise = buildCustomExerciseFromHistory(option);
+
+  assert.equal(exercise.name, "Leg Extension");
+  assert.equal(exercise.isCustom, true);
+  assert.equal(exercise.previousDate, "2026-07-27");
+  assert.deepEqual(exercise.sets.map(({ reps, weight }) => ({ reps, weight })), [
+    { reps: "12", weight: "145" },
+    { reps: "7", weight: "135" }
+  ]);
+  assert.equal(exercise.progression.label, "From 2026-07-27");
 });

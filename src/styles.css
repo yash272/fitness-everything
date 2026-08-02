@@ -2781,8 +2781,63 @@ select:focus {
   color: var(--danger);
 }
 
-.add-session-exercise {
+.add-session-exercise-wrap {
+  display: grid;
+  gap: 6px;
   margin-top: 4px;
+}
+
+.add-session-exercise {
+  margin-top: 0;
+}
+
+.exercise-history-suggestions {
+  display: grid;
+  gap: 5px;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-low);
+}
+
+.exercise-history-suggestions button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  text-align: left;
+}
+
+.exercise-history-suggestions span {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.exercise-history-suggestions strong,
+.exercise-history-suggestions small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.exercise-history-suggestions small {
+  color: var(--muted);
+  font-size: 0.68rem;
+}
+
+.exercise-history-suggestions b {
+  flex: 0 0 auto;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.62rem;
 }
 
 .activity-session,
