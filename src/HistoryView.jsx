@@ -1,6 +1,6 @@
 import { CalendarDays, CalendarRange, ChevronLeft, ChevronRight, Dumbbell, Timer } from "lucide-react";
 import { useMemo } from "react";
-import { consistencySummary, formatDailySteps, historyCategory, periodProgress, recentHistoryItems } from "./historyUtils";
+import { calendarActivityLabel, consistencySummary, formatDailySteps, historyCategory, periodProgress, weekHistoryItems } from "./historyUtils";
 import { hasWorkoutActivity, workoutStatusLabel } from "./workoutDisplayUtils";
 
 const FILTERS = ["All", "Push", "Pull", "Legs", "Activity"];
@@ -65,7 +65,7 @@ export default function HistoryView({
   onSelectedDateChange,
   onOpenWorkout
 }) {
-  const recent = useMemo(() => recentHistoryItems(workouts, filter), [filter, workouts]);
+  const weekItems = useMemo(() => weekHistoryItems(workouts, selectedDate, filter), [filter, selectedDate, workouts]);
   const consistency = useMemo(() => consistencySummary(workouts), [workouts]);
   const selectedDateObject = useMemo(() => new Date(`${selectedDate}T12:00:00`), [selectedDate]);
   const weekStart = useMemo(() => startOfWeek(selectedDateObject), [selectedDateObject]);
@@ -162,28 +162,26 @@ export default function HistoryView({
 
       <section className="history-list">
         <div className="history-list-head">
-          <h2>Recent days</h2>
-          <span>{recent.length}</span>
+          <h2>Week activities</h2>
+          <span>{formatDate(dateKey(weekStart))} - {formatDate(dateKey(weekEnd))}</span>
         </div>
-        {recent.length ? recent.map((workout) => {
-          const category = historyCategory(workout);
-          return (
-            <button type="button" className="history-row" key={workout.id || workout.workout_date} onClick={() => onOpenWorkout(workout.workout_date)}>
-              <span className={`history-row-icon ${category.toLowerCase()}`}>
-                {category === "Activity" ? <Timer size={17} /> : <Dumbbell size={17} />}
-              </span>
-              <span>
-                <small>{formatDate(workout.workout_date)}</small>
-                <strong>{category === "Rest" ? "Rest" : workoutStatusLabel(workout)}</strong>
-                <em>{sessionMetric(workout)}</em>
-              </span>
-              <span className="history-row-meta">
-                {workout.steps ? <b>{Number(workout.steps).toLocaleString()} steps</b> : null}
-                <ChevronRight size={18} />
-              </span>
-            </button>
-          );
-        }) : <div className="history-empty">No days match this filter.</div>}
+        {weekItems.length ? weekItems.map(({ date, workout, category, label }) => (
+          <button type="button" className="history-row" key={date} onClick={() => onOpenWorkout(date)}>
+            <span className={`history-row-icon ${category.toLowerCase()}`}>
+              {category === "Activity" ? <Timer size={17} /> : <Dumbbell size={17} />}
+            </span>
+            <span>
+              <small>{formatDate(date)}</small>
+              <strong>{category === "Rest" ? "Rest" : workoutStatusLabel(workout)}</strong>
+              <em>{workout ? sessionMetric(workout) : "No activity logged"}</em>
+            </span>
+            <span className="history-row-meta">
+              <b className={`activity-chip ${category.toLowerCase()}`}>{label}</b>
+              {workout?.steps ? <b>{Number(workout.steps).toLocaleString()} steps</b> : null}
+              <ChevronRight size={18} />
+            </span>
+          </button>
+        )) : <div className="history-empty">No days match this filter.</div>}
       </section>
 
     </div>
@@ -202,7 +200,7 @@ function WeekCalendar({ weekStart, workouts, selectedDate, onSelect }) {
             <span>{date.toLocaleDateString(undefined, { weekday: "narrow" })}</span>
             <strong>{date.getDate()}</strong>
             <small>{formatDailySteps(workout?.steps)}</small>
-            <i />
+            <em className={`calendar-activity ${historyCategory(workout).toLowerCase()}`}>{calendarActivityLabel(workout)}</em>
           </button>
         );
       })}
@@ -232,6 +230,7 @@ function MonthCalendar({ month, workouts, bodyLogs, selectedDate, onSelect }) {
           return (
             <button type="button" key={key} className={`${selectedDate === key ? "selected" : ""} ${hasWorkoutActivity(workout) ? "trained" : ""}`} onClick={() => onSelect(key)}>
               <strong>{day}</strong>
+              <span className={`calendar-activity ${historyCategory(workout).toLowerCase()}`}>{calendarActivityLabel(workout)}</span>
               <small>{formatDailySteps(workout?.steps)}</small>
               <small>{body ? Number(body.weight).toFixed(1) : ""}</small>
             </button>

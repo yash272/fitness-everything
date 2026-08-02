@@ -13,6 +13,33 @@ export function historyCategory(workout) {
   return canonicalSplit(workout?.split) || "Activity";
 }
 
+export function calendarActivityLabel(workout) {
+  const category = historyCategory(workout);
+  return category === "Activity" ? "Act" : category;
+}
+
+export function weekHistoryItems(workouts, selectedDate, filter = "All") {
+  const selected = new Date(`${selectedDate}T12:00:00`);
+  const day = selected.getDay() || 7;
+  const start = new Date(selected);
+  start.setDate(start.getDate() - day + 1);
+  const byDate = new Map(workouts.map((workout) => [workout.workout_date, workout]));
+
+  return Array.from({ length: 7 }, (_item, index) => {
+    const date = new Date(start);
+    date.setDate(start.getDate() + index);
+    const key = dateKey(date);
+    const workout = byDate.get(key);
+    const category = historyCategory(workout);
+    return {
+      date: key,
+      workout,
+      category,
+      label: calendarActivityLabel(workout)
+    };
+  }).filter((item) => filter === "All" || item.category === filter);
+}
+
 export function recentHistoryItems(workouts, filter = "All", limit = 30) {
   return workouts
     .filter((workout) => filter === "All" || historyCategory(workout) === filter)
