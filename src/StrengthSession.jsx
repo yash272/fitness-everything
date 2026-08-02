@@ -1,6 +1,6 @@
 import { Check, ChevronDown, ChevronUp, Plus, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { findNextIncompleteExerciseIndex, pairedSetRows, sessionDraftStorageKey } from "./sessionDraft";
+import { findNextIncompleteExerciseIndex, isSessionExerciseComplete, orderSessionExercises, pairedSetRows, sessionDraftStorageKey } from "./sessionDraft";
 import { canConfirmSet, normalizeExerciseName, trackingTypeForSet } from "./strengthSessionUtils";
 
 function normalizePersistedSet(set) {
@@ -50,19 +50,19 @@ export default function StrengthSession({
   onDeleteExercise
 }) {
   const initialDraft = useMemo(() => loadDraft(draft), [draft]);
-  const [exercises, setExercises] = useState(() => mergePersistedSets(initialDraft.exercises, persistedWorkout));
+  const [exercises, setExercises] = useState(() => orderSessionExercises(mergePersistedSets(initialDraft.exercises, persistedWorkout)));
   const [activeIndex, setActiveIndex] = useState(0);
   const [newExerciseName, setNewExerciseName] = useState("");
 
   useEffect(() => {
-    setExercises(mergePersistedSets(loadDraft(draft).exercises, persistedWorkout));
+    setExercises(orderSessionExercises(mergePersistedSets(loadDraft(draft).exercises, persistedWorkout)));
     setActiveIndex(0);
     // Session identity changes reset disclosure; set updates merge in the effect below.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draft.selectedDate, draft.split]);
 
   useEffect(() => {
-    setExercises((current) => mergePersistedSets(current, persistedWorkout));
+    setExercises((current) => orderSessionExercises(mergePersistedSets(current, persistedWorkout)));
   }, [persistedWorkout]);
 
   useEffect(() => {
@@ -90,15 +90,14 @@ export default function StrengthSession({
     if (!savedSet) return;
 
     const normalized = normalizePersistedSet(savedSet);
-    const nextExercises = exercises.map((item, index) => index === exerciseIndex ? {
+    const nextExercises = orderSessionExercises(exercises.map((item, index) => index === exerciseIndex ? {
       ...item,
       sets: item.sets.map((set, rowIndex) => rowIndex === setIndex ? normalized : set)
-    } : item);
+    } : item));
     setExercises(nextExercises);
 
-    if (nextExercises[exerciseIndex].sets.every((set) => set.id)) {
-      setActiveIndex(findNextIncompleteExerciseIndex(nextExercises, exerciseIndex));
-    }
+    const nextIndex = findNextIncompleteExerciseIndex(nextExercises, Math.max(0, nextExercises.findIndex((item) => !isSessionExerciseComplete(item)) - 1));
+    setActiveIndex(nextIndex);
   }
 
   async function removeExercise(exerciseIndex) {
@@ -107,22 +106,22 @@ export default function StrengthSession({
       (item) => normalizeExerciseName(item.name) === normalizeExerciseName(exercise.name)
     );
     if (persisted) await onDeleteExercise(persisted.id);
-    setExercises((current) => current.filter((_item, index) => index !== exerciseIndex));
+    setExercises((current) => orderSessionExercises(current.filter((_item, index) => index !== exerciseIndex)));
     setActiveIndex(0);
   }
 
   async function removeSet(exerciseIndex, setIndex, setId) {
     await onDeleteSet(setId);
-    setExercises((current) => current.map((exercise, index) => index === exerciseIndex ? {
+    setExercises((current) => orderSessionExercises(current.map((exercise, index) => index === exerciseIndex ? {
       ...exercise,
       sets: exercise.sets.filter((_set, rowIndex) => rowIndex !== setIndex)
-    } : exercise));
+    } : exercise)));
   }
 
   function addExercise() {
     const name = newExerciseName.trim();
     if (!name) return;
-    setExercises((current) => [...current, {
+    setExercises((current) => orderSessionExercises([{
       key: `custom-${Date.now()}`,
       name,
       trackingType: "weighted",
@@ -131,8 +130,8 @@ export default function StrengthSession({
       previousSets: [],
       sets: [{ id: null, reps: "10", weight: "", duration: "", is_pr: false }],
       progression: { label: "Custom" }
-    }]);
-    setActiveIndex(exercises.length);
+    }, ...current]));
+    setActiveIndex(0);
     setNewExerciseName("");
   }
 
@@ -144,13 +143,22 @@ export default function StrengthSession({
       </div>
 
       <div className="strength-exercises">
-        {exercises.map((exercise, exerciseIndex) => {
+        {[
+          { title: "Not done", items: exercises.map((exercise, exerciseIndex) => ({ exercise, exerciseIndex })).filter(({ exercise }) => !isSessionExerciseComplete(exercise)) },
+          { title: "Done exercises", items: exercises.map((exercise, exerciseIndex) => ({ exercise, exerciseIndex })).filter(({ exercise }) => isSessionExerciseComplete(exercise)) }
+        ].map((section) => section.items.length ? (
+          <section className="session-exercise-section" key={section.title}>
+            <div className="session-exercise-section-head">
+              <span>{section.title}</span>
+              <b>{section.items.length}</b>
+            </div>
+            {section.items.map(({ exercise, exerciseIndex }) => {
           const isActive = activeIndex === exerciseIndex;
           const trackingType = exercise.trackingType || "weighted";
           const savedCount = exercise.sets.filter((set) => set.id).length;
           return (
-            <article className={`session-exercise ${isActive ? "active" : ""}`} key={exercise.key}>
-              <button type="button" className="session-exercise-summary" onClick={() => setActiveIndex(exerciseIndex)} aria-expanded={isActive}>
+            <article className={`session-exercise ${isActive ? "active" : ""} ${isSessionExerciseComplete(exercise) ? "done" : ""}`} key={exercise.key}>
+              <button type="button" className="session-exercise-summary" onClick={() => setActiveIndex(isActive ? -1 : exerciseIndex)} aria-expanded={isActive}>
                 <span>{String(exerciseIndex + 1).padStart(2, "0")}</span>
                 <span>
                   <strong>{exercise.name}</strong>
@@ -206,17 +214,19 @@ export default function StrengthSession({
                     ))}
                   </div>
                   <div className="exercise-inline-actions">
-                    <button type="button" onClick={() => setExercises((current) => current.map((item, index) => index === exerciseIndex ? {
+                    <button type="button" onClick={() => setExercises((current) => orderSessionExercises(current.map((item, index) => index === exerciseIndex ? {
                       ...item,
                       sets: [...item.sets, { id: null, reps: item.sets.at(-1)?.reps || "10", weight: item.sets.at(-1)?.weight || "", duration: "", is_pr: false }]
-                    } : item))}><Plus size={15} />Set</button>
+                    } : item)))}><Plus size={15} />Set</button>
                     <button type="button" className="danger-text" onClick={() => removeExercise(exerciseIndex)}><Trash2 size={14} />Exercise</button>
                   </div>
                 </div>
               ) : null}
             </article>
           );
-        })}
+            })}
+          </section>
+        ) : null)}
       </div>
 
       <div className="add-session-exercise">

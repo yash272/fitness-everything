@@ -47,3 +47,11 @@ test("Past history set rows keep set number visually separate from reps", () => 
   assert.match(stylesSource, /\.past-set-row\s*\{[\s\S]*grid-template-columns:\s*32px\s+minmax\(0,\s*1fr\)/);
   assert.match(stylesSource, /\.past-set-row\s*\{[\s\S]*gap:\s*12px/);
 });
+
+
+test("strength session renders pending and done exercise sections", () => {
+  assert.equal(strengthSource.includes('Not done'), true);
+  assert.equal(strengthSource.includes('Done exercises'), true);
+  assert.equal(strengthSource.includes('setActiveIndex(isActive ? -1 : exerciseIndex)'), true);
+  assert.equal(strengthSource.includes('orderSessionExercises'), true);
+});

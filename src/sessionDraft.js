@@ -71,6 +71,21 @@ export function pairedSetRows(previousSets = [], currentSets = []) {
   );
 }
 
+export function isSessionExerciseComplete(exercise) {
+  const sets = exercise?.sets || [];
+  return sets.length > 0 && sets.every((set) => set.id);
+}
+
+export function orderSessionExercises(exercises = []) {
+  const pending = [];
+  const done = [];
+  exercises.forEach((exercise) => {
+    if (isSessionExerciseComplete(exercise)) done.push(exercise);
+    else pending.push(exercise);
+  });
+  return [...pending, ...done];
+}
+
 export function findNextIncompleteExerciseIndex(exercises, currentIndex) {
   if (!exercises.length) return -1;
   for (let offset = 1; offset <= exercises.length; offset += 1) {
