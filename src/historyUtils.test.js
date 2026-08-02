@@ -86,15 +86,15 @@ test("week history items show every day in the selected week", () => {
   const week = weekHistoryItems(input, "2026-07-30");
 
   assert.deepEqual(week.map((item) => item.date), [
-    "2026-07-27",
-    "2026-07-28",
-    "2026-07-29",
-    "2026-07-30",
-    "2026-07-31",
+    "2026-08-02",
     "2026-08-01",
-    "2026-08-02"
+    "2026-07-31",
+    "2026-07-30",
+    "2026-07-29",
+    "2026-07-28",
+    "2026-07-27"
   ]);
-  assert.deepEqual(week.map((item) => item.category), ["Push", "Rest", "Pull", "Rest", "Activity", "Rest", "Rest"]);
+  assert.deepEqual(week.map((item) => item.category), ["Rest", "Rest", "Activity", "Rest", "Pull", "Rest", "Push"]);
 });
 
 test("calendar activity labels replace generic dots", () => {
