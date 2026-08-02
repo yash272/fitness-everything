@@ -2136,6 +2136,29 @@ select:focus {
   color: var(--faint);
 }
 
+.activity-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 42px;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: var(--surface-muted);
+  color: var(--muted);
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.62rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.activity-chip.push,
+.activity-chip.pull,
+.activity-chip.legs,
+.activity-chip.activity {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+
 .history-row-meta b {
   color: var(--muted);
   font-family: "IBM Plex Mono", ui-monospace, monospace;
@@ -2275,15 +2298,29 @@ select:focus {
   font-size: 0.56rem;
 }
 
-.history-week button i {
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: transparent;
+.calendar-activity {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  max-width: 100%;
+  padding: 2px 5px;
+  border-radius: 999px;
+  background: var(--surface-muted);
+  color: var(--muted);
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.55rem;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 1.2;
 }
 
-.history-week button.trained i {
-  background: var(--accent-text);
+.calendar-activity.push,
+.calendar-activity.pull,
+.calendar-activity.legs,
+.calendar-activity.activity {
+  background: var(--accent-soft);
+  color: var(--accent-text);
 }
 
 .history-weekdays,

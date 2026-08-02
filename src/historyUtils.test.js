@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { consistencySummary, formatDailySteps, historyCategory, periodProgress, recentHistoryItems } from "./historyUtils.js";
+import { calendarActivityLabel, consistencySummary, formatDailySteps, historyCategory, periodProgress, recentHistoryItems, weekHistoryItems } from "./historyUtils.js";
 
 function weightedWorkout(date, split) {
   return {
@@ -73,4 +73,32 @@ test("daily steps are compact enough for week and month cells", () => {
   assert.equal(formatDailySteps(15072), "15.1k");
   assert.equal(formatDailySteps(8000), "8k");
   assert.equal(formatDailySteps(null), "—");
+});
+
+
+test("week history items show every day in the selected week", () => {
+  const input = [
+    weightedWorkout("2026-07-27", "Push"),
+    weightedWorkout("2026-07-29", "Pull"),
+    { workout_date: "2026-07-31", split: "Badminton", exercises: [{ tracking_type: "time", exercise_sets: [{ duration_minutes: 45 }] }] }
+  ];
+
+  const week = weekHistoryItems(input, "2026-07-30");
+
+  assert.deepEqual(week.map((item) => item.date), [
+    "2026-07-27",
+    "2026-07-28",
+    "2026-07-29",
+    "2026-07-30",
+    "2026-07-31",
+    "2026-08-01",
+    "2026-08-02"
+  ]);
+  assert.deepEqual(week.map((item) => item.category), ["Push", "Rest", "Pull", "Rest", "Activity", "Rest", "Rest"]);
+});
+
+test("calendar activity labels replace generic dots", () => {
+  assert.equal(calendarActivityLabel(weightedWorkout("2026-07-27", "Push")), "Push");
+  assert.equal(calendarActivityLabel({ workout_date: "2026-07-28", split: "Badminton", exercises: [{ tracking_type: "time", exercise_sets: [{ duration_minutes: 45 }] }] }), "Act");
+  assert.equal(calendarActivityLabel({ workout_date: "2026-07-29", split: "Push", exercises: [] }), "Rest");
 });
