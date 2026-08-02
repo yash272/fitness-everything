@@ -27,7 +27,7 @@ export function weekHistoryItems(workouts, selectedDate, filter = "All") {
 
   return Array.from({ length: 7 }, (_item, index) => {
     const date = new Date(start);
-    date.setDate(start.getDate() + index);
+    date.setDate(start.getDate() + (6 - index));
     const key = dateKey(date);
     const workout = byDate.get(key);
     const category = historyCategory(workout);
