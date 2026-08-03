@@ -5,6 +5,7 @@ import {
   buildStrengthSessionDraft,
   exerciseHistoryOptions,
   findNextIncompleteExerciseIndex,
+  nextActiveExerciseIndexAfterConfirmation,
   orderSessionExercises,
   pairedSetRows,
   sessionDraftStorageKey
@@ -204,4 +205,23 @@ test("custom exercise from history carries previous sets and plus-two targets", 
     { reps: "7", weight: "135" }
   ]);
   assert.equal(exercise.progression.label, "From 2026-07-27");
+});
+
+
+test("keeps the current exercise open after confirming an unfinished set", () => {
+  const exercises = [
+    { key: "bench", sets: [{ id: "saved" }, { id: null }] },
+    { key: "press", sets: [{ id: null }] }
+  ];
+
+  assert.equal(nextActiveExerciseIndexAfterConfirmation(exercises, "bench"), 0);
+});
+
+test("moves to the next unfinished exercise only after the current exercise is done", () => {
+  const exercises = [
+    { key: "press", sets: [{ id: null }] },
+    { key: "bench", sets: [{ id: "saved" }, { id: "saved" }] }
+  ];
+
+  assert.equal(nextActiveExerciseIndexAfterConfirmation(exercises, "bench"), 0);
 });
