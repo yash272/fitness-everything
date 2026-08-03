@@ -168,6 +168,16 @@ export function orderSessionExercises(exercises = []) {
   return [...pending, ...done];
 }
 
+
+export function nextActiveExerciseIndexAfterConfirmation(exercises, confirmedExerciseKey) {
+  const sameExerciseIndex = exercises.findIndex((exercise) => exercise.key === confirmedExerciseKey);
+  if (sameExerciseIndex >= 0 && !isSessionExerciseComplete(exercises[sameExerciseIndex])) {
+    return sameExerciseIndex;
+  }
+  const firstIncompleteIndex = exercises.findIndex((exercise) => !isSessionExerciseComplete(exercise));
+  return firstIncompleteIndex >= 0 ? firstIncompleteIndex : sameExerciseIndex;
+}
+
 export function findNextIncompleteExerciseIndex(exercises, currentIndex) {
   if (!exercises.length) return -1;
   for (let offset = 1; offset <= exercises.length; offset += 1) {

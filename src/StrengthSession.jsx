@@ -1,6 +1,6 @@
 import { Check, ChevronDown, ChevronUp, Plus, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { buildCustomExerciseFromHistory, findNextIncompleteExerciseIndex, isSessionExerciseComplete, orderSessionExercises, pairedSetRows, sessionDraftStorageKey } from "./sessionDraft";
+import { buildCustomExerciseFromHistory, isSessionExerciseComplete, nextActiveExerciseIndexAfterConfirmation, orderSessionExercises, pairedSetRows, sessionDraftStorageKey } from "./sessionDraft";
 import { canConfirmSet, normalizeExerciseName, trackingTypeForSet } from "./strengthSessionUtils";
 
 function normalizePersistedSet(set) {
@@ -97,14 +97,14 @@ export default function StrengthSession({
     if (!savedSet) return;
 
     const normalized = normalizePersistedSet(savedSet);
+    const confirmedExerciseKey = exercise.key;
     const nextExercises = orderSessionExercises(exercises.map((item, index) => index === exerciseIndex ? {
       ...item,
       sets: item.sets.map((set, rowIndex) => rowIndex === setIndex ? normalized : set)
     } : item));
     setExercises(nextExercises);
 
-    const nextIndex = findNextIncompleteExerciseIndex(nextExercises, Math.max(0, nextExercises.findIndex((item) => !isSessionExerciseComplete(item)) - 1));
-    setActiveIndex(nextIndex);
+    setActiveIndex(nextActiveExerciseIndexAfterConfirmation(nextExercises, confirmedExerciseKey));
   }
 
   async function removeExercise(exerciseIndex) {
