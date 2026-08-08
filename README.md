@@ -87,6 +87,31 @@ npm run db:push
 
 Then deploy the app.
 
+
+## LLM Fitness Context API
+
+The app exposes a read-only Vercel API route for sending recent gym, food, weight, and steps data to an LLM without manually downloading JSON:
+
+```bash
+curl "https://your-app.vercel.app/api/fitness-context?days=90" \
+  -H "Authorization: Bearer $FITNESS_API_TOKEN"
+```
+
+The response includes a compact JSON context with:
+
+- period metadata and units
+- summary totals for workouts, steps, weight change, and calories
+- day-level workouts, exercise sets, food entries, calories, steps, and weight
+
+The route defaults to the last 90 days and accepts `days=1..180`. It requires `FITNESS_API_TOKEN`; do not make this endpoint public. In Vercel, add:
+
+```bash
+FITNESS_API_TOKEN
+SUPABASE_SERVICE_ROLE_KEY # preferred server-only key; falls back to VITE_SUPABASE_ANON_KEY if omitted
+```
+
+Then give the API URL and bearer token to an LLM/tool that supports authenticated HTTP requests.
+
 ## Data Storage
 
 Workout and body data are stored in Supabase Postgres tables under your `VITE_PERSONAL_USER_ID`.
