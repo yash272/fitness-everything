@@ -1,4 +1,4 @@
-import { ArrowRight, Dumbbell, Footprints, Scale } from "lucide-react";
+import { ArrowRight, Dumbbell, Footprints, Scale, Trash2, Utensils } from "lucide-react";
 import { useMemo, useState } from "react";
 import { previousDateKey, todayDateKey } from "./appState";
 import QuickLogRow from "./QuickLogRow";
@@ -39,26 +39,43 @@ function dayCountLabel(count) {
 
 export default function TodayView({
   bodyLogs,
+  foodLogs,
   workouts,
   range,
   setRange,
   onSaveWeight,
   onSaveSteps,
+  onSaveFood,
+  onDeleteFood,
   onOpenWorkout,
   saving
 }) {
   const today = todayDateKey();
   const [weightDate, setWeightDate] = useState(today);
   const [stepsDate, setStepsDate] = useState(previousDateKey());
+  const [foodDate, setFoodDate] = useState(today);
+  const [foodDescription, setFoodDescription] = useState("");
+  const [foodCalories, setFoodCalories] = useState("");
   const latestBody = bodyLogs.at(-1);
   const todayWorkout = workouts.find((workout) => workout.workout_date === today);
   const weightEntry = bodyLogs.find((entry) => entry.log_date === weightDate);
   const stepsEntry = workouts.find((workout) => workout.workout_date === stepsDate);
+  const foodEntriesForDate = (foodLogs || []).filter((entry) => entry.log_date === foodDate);
+  const caloriesForDate = foodEntriesForDate.reduce((sum, entry) => sum + (Number(entry.calories) || 0), 0);
   const chartModel = useMemo(() => buildWeightChartModel(bodyLogs, range), [bodyLogs, range]);
   const firstWeight = chartModel.points[0] ? Number(chartModel.points[0].weight) : null;
   const lastWeight = chartModel.points.at(-1) ? Number(chartModel.points.at(-1).weight) : null;
   const change = firstWeight === null || lastWeight === null ? null : lastWeight - firstWeight;
   const setCount = todayWorkout?.exercises?.reduce((sum, exercise) => sum + exercise.exercise_sets.length, 0) || 0;
+
+  async function saveFoodEntry(event) {
+    event.preventDefault();
+    const saved = await onSaveFood({ date: foodDate, description: foodDescription, calories: foodCalories });
+    if (saved) {
+      setFoodDescription("");
+      setFoodCalories("");
+    }
+  }
 
   return (
     <div className="today-layout">
@@ -107,6 +124,61 @@ export default function TodayView({
           onCommit={({ date, value }) => onSaveSteps({ date, steps: value })}
           saving={saving}
         />
+      </section>
+
+      <section className="calorie-card" aria-label="Calorie tracking">
+        <div className="section-kicker"><Utensils size={16} /> Calories</div>
+        <div className="calorie-summary">
+          <div>
+            <strong>{caloriesForDate.toLocaleString()}</strong>
+            <span>kcal saved for {formatDate(foodDate)}</span>
+          </div>
+          <input
+            type="date"
+            value={foodDate}
+            max={today}
+            onChange={(event) => setFoodDate(event.target.value)}
+            aria-label="Food log date"
+          />
+        </div>
+        <form className="calorie-form" onSubmit={saveFoodEntry}>
+          <label>
+            Food / meal
+            <textarea
+              value={foodDescription}
+              placeholder="Paneer sabzi, 2 rotis, curd..."
+              onChange={(event) => setFoodDescription(event.target.value)}
+              rows={2}
+            />
+          </label>
+          <label>
+            Calories
+            <input
+              type="number"
+              min="1"
+              inputMode="numeric"
+              value={foodCalories}
+              placeholder="650"
+              onChange={(event) => setFoodCalories(event.target.value)}
+            />
+          </label>
+          <button className="primary" disabled={saving || !foodDescription.trim() || !foodCalories}>Save food</button>
+        </form>
+        {foodEntriesForDate.length ? (
+          <div className="food-log-list">
+            {foodEntriesForDate.map((entry) => (
+              <article className="food-log-entry" key={entry.id}>
+                <div>
+                  <strong>{entry.description}</strong>
+                  <span>{Number(entry.calories).toLocaleString()} kcal</span>
+                </div>
+                <button type="button" className="secondary mini" onClick={() => onDeleteFood(entry.id)} aria-label={`Delete ${entry.description}`}>
+                  <Trash2 size={14} />
+                </button>
+              </article>
+            ))}
+          </div>
+        ) : <p className="empty-inline">No food saved for this day yet.</p>}
       </section>
 
       <button type="button" className="today-session" onClick={() => onOpenWorkout(today)}>

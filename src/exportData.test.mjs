@@ -23,8 +23,13 @@ const bodyLogs = [
   { log_date: "2026-06-30", weight: 67.8, body_fat: null },
   { log_date: "2026-07-14", weight: 67.4, body_fat: 18.2 }
 ];
+const foodLogs = [
+  { log_date: "2026-07-14", description: "Paneer sabzi with two rotis", calories: 760, logged_at: "2026-07-14T23:15:00Z" },
+  { log_date: "2026-07-14", description: "Protein bar", calories: 210, logged_at: "2026-07-14T17:05:00Z" },
+  { log_date: "2026-06-30", description: "Ice cream", calories: 850, logged_at: "2026-06-30T20:00:00Z" }
+];
 
-const monthExport = buildFitnessExport({ mode: "month", month: new Date(2026, 6, 1), workouts, bodyLogs, userId: "user-1" });
+const monthExport = buildFitnessExport({ mode: "month", month: new Date(2026, 6, 1), workouts, bodyLogs, foodLogs, userId: "user-1" });
 assert.equal(monthExport.period.type, "month");
 assert.equal(monthExport.period.month, "2026-07");
 assert.equal(monthExport.period.start_date, "2026-07-01");
@@ -32,11 +37,16 @@ assert.equal(monthExport.period.end_date, "2026-07-31");
 assert.equal(monthExport.days.length, 31);
 const july14 = monthExport.days.find((day) => day.date === "2026-07-14");
 assert.equal(july14.weight_kg, 67.4);
+assert.equal(july14.calories_total, 970);
+assert.deepEqual(july14.food_entries, [
+  { description: "Protein bar", calories: 210, logged_at: "2026-07-14T17:05:00Z" },
+  { description: "Paneer sabzi with two rotis", calories: 760, logged_at: "2026-07-14T23:15:00Z" }
+]);
 assert.equal(Object.hasOwn(july14, "body_fat_percent"), false);
 assert.equal(monthExport.days.find((day) => day.date === "2026-06-30"), undefined);
 assert.equal(exportFilename(monthExport), "fitness-everything-2026-07.json");
 
-const allTimeExport = buildFitnessExport({ mode: "all-time", workouts, bodyLogs, userId: "user-1" });
+const allTimeExport = buildFitnessExport({ mode: "all-time", workouts, bodyLogs, foodLogs, userId: "user-1" });
 assert.equal(allTimeExport.period.type, "all_time");
 assert.equal(allTimeExport.period.start_date, "2026-06-30");
 assert.equal(allTimeExport.period.end_date, "2026-07-14");
@@ -45,6 +55,10 @@ assert.equal(allTimeExport.days.length, 15);
 assert.equal(allTimeExport.days[0].date, "2026-06-30");
 assert.equal(allTimeExport.days.at(-1).date, "2026-07-14");
 assert.equal(allTimeExport.days[0].workouts[0].sets[0].weight_lbs, 100);
+assert.equal(allTimeExport.days[0].calories_total, 850);
+assert.deepEqual(allTimeExport.days[0].food_entries, [
+  { description: "Ice cream", calories: 850, logged_at: "2026-06-30T20:00:00Z" }
+]);
 assert.equal(exportFilename(allTimeExport), "fitness-everything-all-time.json");
 
 const emptyAllTime = buildFitnessExport({ mode: "all-time", workouts: [], bodyLogs: [], userId: "user-1" });

@@ -62,3 +62,12 @@ test("custom exercise input shows history suggestions", () => {
   assert.equal(strengthSource.includes('buildCustomExerciseFromHistory'), true);
   assert.equal(strengthSource.includes('previousSets.length'), true);
 });
+
+
+test("Today dashboard includes calorie tracking", () => {
+  const todaySource = readFileSync(new URL("./TodayView.jsx", import.meta.url), "utf8");
+  assert.equal(todaySource.includes('aria-label="Calorie tracking"'), true);
+  assert.equal(todaySource.includes('onSaveFood'), true);
+  assert.match(stylesSource, /\.calorie-card\s*\{/);
+  assert.match(stylesSource, /\.food-log-entry\s*\{/);
+});
