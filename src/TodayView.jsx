@@ -4,6 +4,7 @@ import { previousDateKey, todayDateKey } from "./appState";
 import QuickLogRow from "./QuickLogRow";
 import WeightChart from "./WeightChart";
 import { buildWeightChartModel } from "./weightChartUtils";
+import { estimateFoodCalories } from "./foodCalorieEstimator";
 import { hasWorkoutActivity, workoutStatusLabel } from "./workoutDisplayUtils";
 
 function formatDate(date) {
@@ -56,12 +57,14 @@ export default function TodayView({
   const [foodDate, setFoodDate] = useState(today);
   const [foodDescription, setFoodDescription] = useState("");
   const [foodCalories, setFoodCalories] = useState("");
+  const [foodCaloriesEdited, setFoodCaloriesEdited] = useState(false);
   const latestBody = bodyLogs.at(-1);
   const todayWorkout = workouts.find((workout) => workout.workout_date === today);
   const weightEntry = bodyLogs.find((entry) => entry.log_date === weightDate);
   const stepsEntry = workouts.find((workout) => workout.workout_date === stepsDate);
   const foodEntriesForDate = (foodLogs || []).filter((entry) => entry.log_date === foodDate);
   const caloriesForDate = foodEntriesForDate.reduce((sum, entry) => sum + (Number(entry.calories) || 0), 0);
+  const calorieEstimate = estimateFoodCalories(foodDescription);
   const chartModel = useMemo(() => buildWeightChartModel(bodyLogs, range), [bodyLogs, range]);
   const firstWeight = chartModel.points[0] ? Number(chartModel.points[0].weight) : null;
   const lastWeight = chartModel.points.at(-1) ? Number(chartModel.points.at(-1).weight) : null;
@@ -74,7 +77,20 @@ export default function TodayView({
     if (saved) {
       setFoodDescription("");
       setFoodCalories("");
+      setFoodCaloriesEdited(false);
     }
+  }
+
+  function updateFoodDescription(value) {
+    setFoodDescription(value);
+    const nextEstimate = estimateFoodCalories(value);
+    if (!foodCaloriesEdited) setFoodCalories(nextEstimate ? String(nextEstimate.calories) : "");
+  }
+
+  function useCalorieEstimate() {
+    if (!calorieEstimate) return;
+    setFoodCalories(String(calorieEstimate.calories));
+    setFoodCaloriesEdited(false);
   }
 
   return (
@@ -147,7 +163,7 @@ export default function TodayView({
             <textarea
               value={foodDescription}
               placeholder="Paneer sabzi, 2 rotis, curd..."
-              onChange={(event) => setFoodDescription(event.target.value)}
+              onChange={(event) => updateFoodDescription(event.target.value)}
               rows={2}
             />
           </label>
@@ -159,11 +175,21 @@ export default function TodayView({
               inputMode="numeric"
               value={foodCalories}
               placeholder="650"
-              onChange={(event) => setFoodCalories(event.target.value)}
+              onChange={(event) => {
+                setFoodCalories(event.target.value);
+                setFoodCaloriesEdited(true);
+              }}
             />
           </label>
           <button className="primary" disabled={saving || !foodDescription.trim() || !foodCalories}>Save food</button>
         </form>
+        {calorieEstimate ? (
+          <button type="button" className="calorie-estimate" onClick={useCalorieEstimate}>
+            Estimated {calorieEstimate.calories.toLocaleString()} kcal from {calorieEstimate.matchedItems.join(", ")}
+          </button>
+        ) : foodDescription.trim() ? (
+          <p className="calorie-estimate muted">No estimate yet — add foods like roti, paneer, dal, rice, protein bar, cookie, etc.</p>
+        ) : null}
         {foodEntriesForDate.length ? (
           <div className="food-log-list">
             {foodEntriesForDate.map((entry) => (

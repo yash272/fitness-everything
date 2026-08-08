@@ -3613,3 +3613,24 @@ select:focus {
     grid-template-columns: 1fr;
   }
 }
+
+.calorie-estimate {
+  justify-self: start;
+  min-height: 32px;
+  padding: 7px 10px;
+  border: 1px solid var(--accent-line);
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-size: 0.78rem;
+  font-weight: 650;
+  text-align: left;
+}
+
+.calorie-estimate.muted {
+  margin: 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-weight: 500;
+}
