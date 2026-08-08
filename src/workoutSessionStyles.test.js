@@ -68,6 +68,8 @@ test("Today dashboard includes calorie tracking", () => {
   const todaySource = readFileSync(new URL("./TodayView.jsx", import.meta.url), "utf8");
   assert.equal(todaySource.includes('aria-label="Calorie tracking"'), true);
   assert.equal(todaySource.includes('onSaveFood'), true);
+  assert.equal(todaySource.includes('estimateFoodCalories'), true);
+  assert.equal(todaySource.includes('Estimated'), true);
   assert.match(stylesSource, /\.calorie-card\s*\{/);
   assert.match(stylesSource, /\.food-log-entry\s*\{/);
 });
