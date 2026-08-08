@@ -64,6 +64,7 @@ function Tracker() {
   const [range, setRange] = useState(30);
   const [workouts, setWorkouts] = useState([]);
   const [bodyLogs, setBodyLogs] = useState([]);
+  const [foodLogs, setFoodLogs] = useState([]);
   const [logDate, setLogDate] = useState(todayKey());
   const [workoutDate, setWorkoutDate] = useState(() => screen.name === "workout" ? screen.date : todayKey());
   const [calendarMonth, setCalendarMonth] = useState(startOfMonth(new Date()));
@@ -157,7 +158,7 @@ function Tracker() {
   }, [workouts]);
   const loadData = useCallback(async () => {
     setLoading(true);
-    const [workoutResult, bodyResult] = await Promise.all([
+    const [workoutResult, bodyResult, foodResult] = await Promise.all([
       supabase
         .from("workouts")
         .select("id,user_id,workout_date,split,did_workout,steps,created_at,updated_at,exercises(id,user_id,name,tracking_type,created_at,exercise_sets(id,user_id,reps,weight,duration_minutes,is_pr,logged_at))")
@@ -169,11 +170,18 @@ function Tracker() {
         .select("id,user_id,log_date,weight")
         .eq("user_id", userId)
         .order("log_date", { ascending: true })
-        .limit(180)
+        .limit(180),
+      supabase
+        .from("food_logs")
+        .select("id,user_id,log_date,description,calories,logged_at,created_at,updated_at")
+        .eq("user_id", userId)
+        .order("log_date", { ascending: false })
+        .order("logged_at", { ascending: false })
+        .limit(240)
     ]);
 
-    if (workoutResult.error || bodyResult.error) {
-      setNotice(workoutResult.error?.message || bodyResult.error?.message || "Could not load data.");
+    if (workoutResult.error || bodyResult.error || foodResult.error) {
+      setNotice(workoutResult.error?.message || bodyResult.error?.message || foodResult.error?.message || "Could not load data.");
     } else {
       const normalized = workoutResult.data.map((workout) => ({
         ...workout,
@@ -184,6 +192,7 @@ function Tracker() {
       }));
       setWorkouts(normalized);
       setBodyLogs(bodyResult.data);
+      setFoodLogs(foodResult.data);
     }
     setLoading(false);
   }, [userId]);
@@ -545,6 +554,44 @@ function Tracker() {
     return !error;
   }
 
+  async function saveFoodLog({ date, description, calories }) {
+    const foodDescription = String(description || "").trim();
+    const normalizedCalories = Number.parseInt(String(calories || "").replace(/,/g, ""), 10);
+    if (!date || !foodDescription || !Number.isFinite(normalizedCalories) || normalizedCalories <= 0) return false;
+    setSaving(true);
+    setNotice("");
+    const { data, error } = await supabase
+      .from("food_logs")
+      .insert({
+        user_id: userId,
+        log_date: date,
+        description: foodDescription,
+        calories: normalizedCalories
+      })
+      .select("id,user_id,log_date,description,calories,logged_at,created_at,updated_at")
+      .single();
+
+    if (error) setNotice(error.message);
+    else {
+      setFoodLogs((items) => [data, ...items].sort((a, b) => (
+        b.log_date.localeCompare(a.log_date) || String(b.logged_at || "").localeCompare(String(a.logged_at || ""))
+      )));
+    }
+    setSaving(false);
+    return !error;
+  }
+
+  async function deleteFoodLog(id) {
+    if (!id) return false;
+    setSaving(true);
+    setNotice("");
+    const { error } = await supabase.from("food_logs").delete().eq("id", id).eq("user_id", userId);
+    if (error) setNotice(error.message);
+    else setFoodLogs((items) => items.filter((item) => item.id !== id));
+    setSaving(false);
+    return !error;
+  }
+
   async function changeSplit(split) {
     setIsWorkoutDatePickerOpen(false);
     try {
@@ -601,6 +648,7 @@ function Tracker() {
       month: new Date(year, month - 1, 1),
       workouts,
       bodyLogs,
+      foodLogs,
       userId
     });
     downloadExport(payload);
@@ -611,6 +659,7 @@ function Tracker() {
       mode: "all-time",
       workouts,
       bodyLogs,
+      foodLogs,
       userId
     });
     downloadExport(payload);
@@ -677,11 +726,14 @@ function Tracker() {
         {!loading && activeView === "dashboard" && (
           <TodayView
             bodyLogs={bodyLogs}
+            foodLogs={foodLogs}
             workouts={workouts}
             range={range}
             setRange={setRange}
             onSaveWeight={saveWeightLog}
             onSaveSteps={saveDailyLog}
+            onSaveFood={saveFoodLog}
+            onDeleteFood={deleteFoodLog}
             onOpenWorkout={(date) => {
               setWorkoutDate(date);
               navigateTo(createWorkoutScreen(date, "today"));

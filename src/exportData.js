@@ -25,13 +25,20 @@ function hasWorkoutActivity(workout) {
   return Boolean(workout?.did_workout || workout?.exercises?.length || workout?.split);
 }
 
-function exportDay({ date, workoutsByDate, bodyLogsByDate }) {
+function exportDay({ date, workoutsByDate, bodyLogsByDate, foodLogsByDate }) {
   const workout = workoutsByDate.get(date);
   const bodyLog = bodyLogsByDate.get(date);
+  const foodEntries = foodLogsByDate.get(date) || [];
   return {
     date,
     steps: workout?.steps ?? null,
     weight_kg: bodyLog ? Number(bodyLog.weight) : null,
+    calories_total: foodEntries.reduce((sum, entry) => sum + (Number(entry.calories) || 0), 0),
+    food_entries: foodEntries.map((entry) => ({
+      description: entry.description,
+      calories: Number(entry.calories),
+      logged_at: entry.logged_at
+    })),
     gym: hasWorkoutActivity(workout),
     workout_type: workoutTypeForExport(workout) || null,
     workouts: (workout?.exercises || []).map((exercise) => ({
@@ -72,10 +79,11 @@ function buildMonthPeriod(month) {
   };
 }
 
-function buildAllTimePeriod(workouts, bodyLogs) {
+function buildAllTimePeriod(workouts, bodyLogs, foodLogs) {
   const dates = [
     ...workouts.map((workout) => workout.workout_date),
-    ...bodyLogs.map((entry) => entry.log_date)
+    ...bodyLogs.map((entry) => entry.log_date),
+    ...foodLogs.map((entry) => entry.log_date)
   ].filter(Boolean).sort();
 
   return {
@@ -86,10 +94,18 @@ function buildAllTimePeriod(workouts, bodyLogs) {
   };
 }
 
-export function buildFitnessExport({ mode = "month", month = new Date(), workouts = [], bodyLogs = [], userId }) {
+export function buildFitnessExport({ mode = "month", month = new Date(), workouts = [], bodyLogs = [], foodLogs = [], userId }) {
   const workoutsByDate = new Map(workouts.map((workout) => [workout.workout_date, workout]));
   const bodyLogsByDate = new Map(bodyLogs.map((entry) => [entry.log_date, entry]));
-  const period = mode === "all-time" ? buildAllTimePeriod(workouts, bodyLogs) : buildMonthPeriod(month);
+  const foodLogsByDate = foodLogs.reduce((map, entry) => {
+    if (!entry.log_date) return map;
+    const items = map.get(entry.log_date) || [];
+    items.push(entry);
+    items.sort((a, b) => String(a.logged_at || "").localeCompare(String(b.logged_at || "")));
+    map.set(entry.log_date, items);
+    return map;
+  }, new Map());
+  const period = mode === "all-time" ? buildAllTimePeriod(workouts, bodyLogs, foodLogs) : buildMonthPeriod(month);
 
   return {
     exported_at: new Date().toISOString(),
@@ -99,9 +115,10 @@ export function buildFitnessExport({ mode = "month", month = new Date(), workout
     units: {
       body_weight: "kg",
       set_weight: "lbs",
-      time: "minutes"
+      time: "minutes",
+      calories: "kcal"
     },
-    days: daysBetween(period.start_date, period.end_date, { workoutsByDate, bodyLogsByDate })
+    days: daysBetween(period.start_date, period.end_date, { workoutsByDate, bodyLogsByDate, foodLogsByDate })
   };
 }
 
