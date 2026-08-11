@@ -90,11 +90,10 @@ Then deploy the app.
 
 ## LLM Fitness Context API
 
-The app exposes a read-only Vercel API route for sending recent gym, food, weight, and steps data to an LLM without manually downloading JSON:
+The app exposes a public read-only Vercel API route for sending recent gym, food, weight, and steps data to an LLM without manually downloading JSON:
 
 ```bash
-curl "https://your-app.vercel.app/api/fitness-context?days=90" \
-  -H "Authorization: Bearer $FITNESS_API_TOKEN"
+curl "https://your-app.vercel.app/api/fitness-context?days=90"
 ```
 
 The response includes a compact JSON context with:
@@ -103,14 +102,13 @@ The response includes a compact JSON context with:
 - summary totals for workouts, steps, weight change, and calories
 - day-level workouts, exercise sets, food entries, calories, steps, and weight
 
-The route defaults to the last 90 days and accepts `days=1..180`. It requires `FITNESS_API_TOKEN`; do not make this endpoint public. In Vercel, add:
+The route defaults to the last 90 days and accepts `days=1..180`. It is intentionally public, so anyone with the URL can read the returned fitness context. In Vercel, add:
 
 ```bash
-FITNESS_API_TOKEN
 SUPABASE_SERVICE_ROLE_KEY # preferred server-only key; falls back to VITE_SUPABASE_ANON_KEY if omitted
 ```
 
-Then give the API URL and bearer token to an LLM/tool that supports authenticated HTTP requests.
+Then give the API URL to an LLM/tool that supports HTTP requests.
 
 ## Data Storage
 

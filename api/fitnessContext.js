@@ -19,25 +19,11 @@ function hasWorkoutActivity(workout) {
   return Boolean(workout?.did_workout || workout?.split || workout?.exercises?.length);
 }
 
-function headerValue(headers, key) {
-  if (!headers) return undefined;
-  if (typeof headers.get === "function") return headers.get(key);
-  const lower = key.toLowerCase();
-  return headers[key] || headers[lower] || headers[key.toUpperCase()];
-}
 
 export function normalizeDaysParam(value) {
   const parsed = Number.parseInt(value ?? "90", 10);
   if (!Number.isFinite(parsed) || parsed <= 0) return 90;
   return Math.min(parsed, 180);
-}
-
-export function authorizeFitnessRequest(request, expectedToken) {
-  if (!expectedToken) return false;
-  const authorization = headerValue(request.headers, "authorization") || "";
-  const bearer = authorization.match(/^Bearer\s+(.+)$/i)?.[1];
-  const headerToken = headerValue(request.headers, "x-fitness-api-token");
-  return bearer === expectedToken || headerToken === expectedToken;
 }
 
 function sortByDateAscending(items, field) {
