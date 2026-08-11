@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { authorizeFitnessRequest, fetchFitnessContext, normalizeDaysParam } from "./fitnessContext.js";
+import { fetchFitnessContext, normalizeDaysParam } from "./fitnessContext.js";
 
 function sendJson(response, status, payload) {
   response.statusCode = status;
@@ -9,11 +9,6 @@ function sendJson(response, status, payload) {
 }
 
 export default async function handler(request, response) {
-  if (!authorizeFitnessRequest(request, process.env.FITNESS_API_TOKEN)) {
-    sendJson(response, 401, { error: "Unauthorized" });
-    return;
-  }
-
   const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
   const userId = process.env.FITNESS_USER_ID || process.env.VITE_PERSONAL_USER_ID;

@@ -1,10 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-  authorizeFitnessRequest,
   buildFitnessContextPayload,
   normalizeDaysParam
 } from "../api/fitnessContext.js";
+import handler from "../api/fitness-context.js";
 
 const workouts = [
   {
@@ -28,6 +28,17 @@ const bodyLogs = [
   { log_date: "2026-08-01", weight: 66.8 },
   { log_date: "2026-08-08", weight: 66.1 }
 ];
+
+function mockResponse() {
+  return {
+    statusCode: 200,
+    headers: {},
+    body: "",
+    setHeader(key, value) { this.headers[key] = value; },
+    end(value) { this.body = value; }
+  };
+}
+
 const foodLogs = [
   { log_date: "2026-08-08", description: "Protein bar", calories: 210, logged_at: "2026-08-08T10:00:00Z" },
   { log_date: "2026-08-08", description: "Paneer sabzi", calories: 550, logged_at: "2026-08-08T20:00:00Z" }
@@ -40,11 +51,22 @@ test("normalizes days parameter for LLM API calls", () => {
   assert.equal(normalizeDaysParam("bad"), 90);
 });
 
-test("requires the configured bearer token", () => {
-  assert.equal(authorizeFitnessRequest({ headers: { authorization: "Bearer token-1" } }, "token-1"), true);
-  assert.equal(authorizeFitnessRequest({ headers: { "x-fitness-api-token": "token-1" } }, "token-1"), true);
-  assert.equal(authorizeFitnessRequest({ headers: { authorization: "Bearer wrong" } }, "token-1"), false);
-  assert.equal(authorizeFitnessRequest({ headers: {} }, "token-1"), false);
+test("fitness context endpoint is public and does not require a bearer token", async () => {
+  const originalEnv = { ...process.env };
+  delete process.env.FITNESS_API_TOKEN;
+  delete process.env.SUPABASE_URL;
+  delete process.env.VITE_SUPABASE_URL;
+  delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+  delete process.env.VITE_SUPABASE_ANON_KEY;
+  delete process.env.FITNESS_USER_ID;
+  delete process.env.VITE_PERSONAL_USER_ID;
+
+  const response = mockResponse();
+  await handler({ url: "/api/fitness-context?days=90", headers: {} }, response);
+
+  process.env = originalEnv;
+  assert.equal(response.statusCode, 500);
+  assert.match(response.body, /Missing Supabase API configuration/);
 });
 
 test("builds a compact 90-day gym food and weight context for LLMs", () => {
