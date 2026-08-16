@@ -20,6 +20,23 @@ export function timedActivityNames(workout) {
   return names;
 }
 
+
+export function hasStrengthSets(workout) {
+  return Boolean((workout?.exercises || []).some((exercise) => (
+    (exercise.tracking_type || "weighted") !== "time" && exercise.exercise_sets?.length
+  )));
+}
+
+export function clearWorkoutTypePatch(workout) {
+  if (hasStrengthSets(workout)) return { canClear: false };
+  const activity = timedActivityNames(workout)[0] || "";
+  return {
+    canClear: true,
+    split: activity,
+    did_workout: Boolean(activity)
+  };
+}
+
 export function workoutTypeForEdit(workout) {
   return workout?.split?.trim() || "";
 }
