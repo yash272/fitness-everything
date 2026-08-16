@@ -70,3 +70,27 @@ test("a cleared no-set day is labeled as rest instead of an active session", () 
   assert.equal(workoutStageLabel("Legs", { exercises: [] }), "Active session");
   assert.equal(workoutStageLabel("", workoutWithSets("")), "Active session");
 });
+
+
+test("clearing a selected strength type is allowed when only timed activities are logged", () => {
+  assert.deepEqual(workoutDisplayUtils.clearWorkoutTypePatch({ split: "Legs", exercises: [] }), {
+    canClear: true,
+    split: "",
+    did_workout: false
+  });
+  assert.deepEqual(workoutDisplayUtils.clearWorkoutTypePatch({
+    split: "Legs",
+    exercises: [{ name: "Badminton", tracking_type: "time", exercise_sets: [{ id: "set-activity", duration_minutes: 45 }] }]
+  }), {
+    canClear: true,
+    split: "Badminton",
+    did_workout: true
+  });
+});
+
+test("clearing a selected strength type is blocked only when strength sets exist", () => {
+  assert.deepEqual(workoutDisplayUtils.clearWorkoutTypePatch({
+    split: "Legs",
+    exercises: [{ name: "Leg Extension", tracking_type: "weighted", exercise_sets: [{ id: "set-strength", reps: 10, weight: 80 }] }]
+  }), { canClear: false });
+});

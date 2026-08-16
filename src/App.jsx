@@ -18,7 +18,7 @@ import WorkoutView from "./WorkoutView";
 import { buildProgressivePlanForSplit, canonicalSplit, shouldShowSuggestedPlan, suggestedPlanDraftStorageKey, suggestedPlanHiddenStorageKey } from "./workoutPlan";
 import { addSetToPlan, removeSetFromPlan, removeSetFromWorkouts, upsertSetInWorkouts } from "./workoutMutations";
 import { isSupabaseConfigured, supabase } from "./supabaseClient";
-import { hasWorkoutActivity, splitForTimedActivity, toggleWorkoutType, workoutActivityFlag, workoutStageLabel, workoutStatusLabel, workoutTypeForEdit, workoutTypeLabel } from "./workoutDisplayUtils";
+import { clearWorkoutTypePatch, hasWorkoutActivity, splitForTimedActivity, toggleWorkoutType, workoutActivityFlag, workoutStageLabel, workoutStatusLabel, workoutTypeForEdit, workoutTypeLabel } from "./workoutDisplayUtils";
 
 const DEFAULT_WORKOUT_TYPES = ["Push", "Pull", "Legs", "Cardio", "Sports", "Mobility"];
 const DEFAULT_EXERCISES = {
@@ -446,13 +446,13 @@ function Tracker() {
   async function clearWorkoutType(date) {
     setIsWorkoutDatePickerOpen(false);
     const workout = workouts.find((item) => item.workout_date === date);
-    const hasSets = workout?.exercises?.some((exercise) => exercise.exercise_sets?.length);
-    if (hasSets) {
-      setNotice("Remove the logged sets before clearing this session.");
+    const patch = clearWorkoutTypePatch(workout);
+    if (!patch.canClear) {
+      setNotice("Remove the logged strength sets before clearing this workout.");
       return false;
     }
     try {
-      await ensureWorkoutForDate(date, "", { did_workout: false });
+      await ensureWorkoutForDate(date, patch.split, { did_workout: patch.did_workout });
       return true;
     } catch (error) {
       setNotice(error.message);
