@@ -1,8 +1,9 @@
 import { Activity, Dumbbell, Plus } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import ActivitySession from "./ActivitySession";
 import { buildStrengthSessionDraft } from "./sessionDraft";
 import StrengthSession from "./StrengthSession";
+import { timedActivityNames } from "./workoutDisplayUtils";
 import { canonicalSplit } from "./workoutPlan";
 
 export default function WorkoutView({
@@ -21,24 +22,38 @@ export default function WorkoutView({
   onSaveActivity
 }) {
   const [customType, setCustomType] = useState("");
+  const loggedActivities = useMemo(() => timedActivityNames(workout), [workout]);
   const strengthSplit = canonicalSplit(selectedSplit);
+  const fallbackActivity = !strengthSplit && selectedSplit ? selectedSplit : loggedActivities[0] || "";
+  const [activeActivity, setActiveActivity] = useState(fallbackActivity);
   const strengthDraft = useMemo(() => (
     strengthSplit
       ? buildStrengthSessionDraft({ split: strengthSplit, selectedDate: date, workouts })
       : null
   ), [date, strengthSplit, workouts]);
-  const durationSet = workout?.exercises?.find((exercise) => exercise.tracking_type === "time")?.exercise_sets?.[0];
+  const activityName = activeActivity.trim();
+  const durationSet = workout?.exercises?.find((exercise) => (
+    exercise.tracking_type === "time" && exercise.name.trim().toLowerCase() === activityName.toLowerCase()
+  ))?.exercise_sets?.[0];
+
+  useEffect(() => {
+    setActiveActivity(fallbackActivity);
+  }, [fallbackActivity]);
 
   if (readOnly) {
     return <PastWorkoutHistory date={date} workout={workout} selectedSplit={selectedSplit} />;
   }
 
-  async function chooseType(type) {
+  async function chooseStrengthType(type) {
     if (selectedSplit?.toLowerCase() === type.toLowerCase()) {
       await onClearType();
       return;
     }
     await onChangeType(type);
+  }
+
+  function chooseActivity(type) {
+    setActiveActivity(type);
   }
 
   return (
@@ -48,15 +63,17 @@ export default function WorkoutView({
           <span>Active session</span>
           <h2>{selectedSplit || "Rest"}</h2>
         </div>
-        <div className="session-type-choices" aria-label="Session type">
+        <div className="session-type-choices" aria-label="Strength session type">
           {["Push", "Pull", "Legs"].map((type) => (
-            <button type="button" key={type} className={selectedSplit === type ? "active" : ""} onClick={() => chooseType(type)} aria-pressed={selectedSplit === type}>
+            <button type="button" key={type} className={selectedSplit === type ? "active" : ""} onClick={() => chooseStrengthType(type)} aria-pressed={selectedSplit === type}>
               <Dumbbell size={15} />
               {type}
             </button>
           ))}
+        </div>
+        <div className="session-type-choices" aria-label="Same-day activity type">
           {["Cardio", "Badminton"].map((type) => (
-            <button type="button" key={type} className={selectedSplit === type ? "active" : ""} onClick={() => chooseType(type)} aria-pressed={selectedSplit === type}>
+            <button type="button" key={type} className={activityName === type ? "active" : ""} onClick={() => chooseActivity(type)} aria-pressed={activityName === type}>
               <Activity size={15} />
               {type}
             </button>
@@ -64,12 +81,12 @@ export default function WorkoutView({
         </div>
         <div className="custom-session-type">
           <input value={customType} list="workout-type-options" placeholder="Run, basketball, mobility..." onChange={(event) => setCustomType(event.target.value)} onKeyDown={(event) => {
-            if (event.key === "Enter" && customType.trim()) chooseType(customType.trim());
-          }} aria-label="Custom session type" />
+            if (event.key === "Enter" && customType.trim()) chooseActivity(customType.trim());
+          }} aria-label="Custom activity type" />
           <datalist id="workout-type-options">
             {workoutTypes.map((type) => <option value={type} key={type} />)}
           </datalist>
-          <button type="button" onClick={() => chooseType(customType.trim())} disabled={!customType.trim()} aria-label="Set custom session type"><Plus size={18} /></button>
+          <button type="button" onClick={() => chooseActivity(customType.trim())} disabled={!customType.trim()} aria-label="Set custom activity type"><Plus size={18} /></button>
         </div>
       </section>
 
@@ -82,20 +99,22 @@ export default function WorkoutView({
           onDeleteSet={onDeleteSet}
           onDeleteExercise={onDeleteExercise}
         />
-      ) : selectedSplit ? (
+      ) : null}
+
+      {activityName ? (
         <ActivitySession
-          name={selectedSplit}
+          name={activityName}
           duration={durationSet?.duration_minutes}
           saving={saving}
-          onSave={(duration) => onSaveActivity({ date, name: selectedSplit, duration, setId: durationSet?.id })}
+          onSave={(duration) => onSaveActivity({ date, name: activityName, duration, setId: durationSet?.id })}
         />
-      ) : (
+      ) : !strengthDraft ? (
         <section className="rest-session">
           <Dumbbell size={24} />
           <h2>Rest day</h2>
-          <p>Choose a session when you are ready to train.</p>
+          <p>Choose a workout or activity when you are ready to train.</p>
         </section>
-      )}
+      ) : null}
     </div>
   );
 }

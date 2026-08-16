@@ -18,7 +18,7 @@ import WorkoutView from "./WorkoutView";
 import { buildProgressivePlanForSplit, canonicalSplit, shouldShowSuggestedPlan, suggestedPlanDraftStorageKey, suggestedPlanHiddenStorageKey } from "./workoutPlan";
 import { addSetToPlan, removeSetFromPlan, removeSetFromWorkouts, upsertSetInWorkouts } from "./workoutMutations";
 import { isSupabaseConfigured, supabase } from "./supabaseClient";
-import { hasWorkoutActivity, toggleWorkoutType, workoutActivityFlag, workoutStageLabel, workoutStatusLabel, workoutTypeForEdit, workoutTypeLabel } from "./workoutDisplayUtils";
+import { hasWorkoutActivity, splitForTimedActivity, toggleWorkoutType, workoutActivityFlag, workoutStageLabel, workoutStatusLabel, workoutTypeForEdit, workoutTypeLabel } from "./workoutDisplayUtils";
 
 const DEFAULT_WORKOUT_TYPES = ["Push", "Pull", "Legs", "Cardio", "Sports", "Mobility"];
 const DEFAULT_EXERCISES = {
@@ -433,9 +433,10 @@ function Tracker() {
   }
 
   async function saveTimedActivity({ date, name, duration, setId }) {
+    const workout = workouts.find((item) => item.workout_date === date);
     const saved = await saveStrengthSet({
       date,
-      split: name,
+      split: splitForTimedActivity(workout, name),
       exercise: { name, trackingType: "time" },
       set: { id: setId, duration }
     });
