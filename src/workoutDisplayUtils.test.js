@@ -32,6 +32,24 @@ test("uses Workout only as an activity-status fallback", () => {
   assert.equal(hasWorkoutActivity(workoutWithSets("")), true);
 });
 
+test("labels a strength workout and timed activity saved on the same day", () => {
+  const sameDayWorkout = {
+    split: "Push",
+    exercises: [
+      { name: "Flat Dumbbell Bench Press", tracking_type: "weighted", exercise_sets: [{ id: "set-1" }] },
+      { name: "Badminton", tracking_type: "time", exercise_sets: [{ id: "set-2", duration_minutes: 60 }] }
+    ]
+  };
+
+  assert.equal(workoutStatusLabel(sameDayWorkout), "Push + Badminton");
+});
+
+test("preserves the primary strength split when saving a timed activity", () => {
+  assert.equal(workoutDisplayUtils.splitForTimedActivity({ split: "Push" }, "Badminton"), "Push");
+  assert.equal(workoutDisplayUtils.splitForTimedActivity({ split: "" }, "Badminton"), "Badminton");
+  assert.equal(workoutDisplayUtils.splitForTimedActivity(null, "Cardio"), "Cardio");
+});
+
 test("tapping the selected workout type clears it", () => {
   assert.equal(typeof toggleWorkoutType, "function");
   assert.equal(toggleWorkoutType("Legs", "Legs"), "");
