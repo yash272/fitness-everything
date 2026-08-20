@@ -1,6 +1,6 @@
 import { Check, ChevronDown, ChevronUp, Plus, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { buildCustomExerciseFromHistory, isSessionExerciseComplete, nextActiveExerciseIndexAfterConfirmation, orderSessionExercises, pairedSetRows, sessionDraftStorageKey } from "./sessionDraft";
+import { buildCustomExerciseFromHistory, isSessionExerciseComplete, nextActiveExerciseIndexAfterConfirmation, orderSessionExercises, pairedSetRows, removeSetAtIndex, sessionDraftStorageKey } from "./sessionDraft";
 import { canConfirmSet, normalizeExerciseName, trackingTypeForSet } from "./strengthSessionUtils";
 
 function normalizePersistedSet(set) {
@@ -118,10 +118,10 @@ export default function StrengthSession({
   }
 
   async function removeSet(exerciseIndex, setIndex, setId) {
-    await onDeleteSet(setId);
+    if (setId) await onDeleteSet(setId);
     setExercises((current) => orderSessionExercises(current.map((exercise, index) => index === exerciseIndex ? {
       ...exercise,
-      sets: exercise.sets.filter((_set, rowIndex) => rowIndex !== setIndex)
+      sets: removeSetAtIndex(exercise.sets, setIndex)
     } : exercise)));
   }
 
@@ -211,11 +211,9 @@ export default function StrengthSession({
                             <button type="button" className={`confirm-set ${current.id ? "saved" : ""}`} onClick={() => confirmSet(exerciseIndex, setIndex)} disabled={saving || !canConfirmSet(current, trackingType, exercise.isCustom)} aria-label={`${current.id ? "Update" : "Confirm"} ${exercise.name} set ${setIndex + 1}`}>
                               <Check size={17} />
                             </button>
-                            {current.id ? (
-                              <button type="button" className="delete-set" onClick={() => removeSet(exerciseIndex, setIndex, current.id)} disabled={saving} aria-label={`Delete ${exercise.name} set ${setIndex + 1}`}>
-                                <Trash2 size={14} />
-                              </button>
-                            ) : null}
+                            <button type="button" className="delete-set" onClick={() => removeSet(exerciseIndex, setIndex, current.id)} disabled={saving} aria-label={`Delete ${exercise.name} set ${setIndex + 1}`}>
+                              <Trash2 size={14} />
+                            </button>
                           </div>
                         ) : null}
                       </div>

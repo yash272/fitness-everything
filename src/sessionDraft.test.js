@@ -8,6 +8,7 @@ import {
   nextActiveExerciseIndexAfterConfirmation,
   orderSessionExercises,
   pairedSetRows,
+  removeSetAtIndex,
   sessionDraftStorageKey
 } from "./sessionDraft.js";
 
@@ -99,6 +100,24 @@ test("pairedSetRows keeps unmatched rows visible", () => {
   assert.deepEqual(pairedSetRows([{ id: "p1" }, { id: "p2" }], [{ id: "c1" }]), [
     { previous: { id: "p1" }, current: { id: "c1" } },
     { previous: { id: "p2" }, current: null }
+  ]);
+});
+
+test("removing an unsaved set keeps the remaining draft rows in order", () => {
+  const sets = [
+    { id: "saved-1", reps: "10" },
+    { id: null, reps: "12" },
+    { id: null, reps: "8" }
+  ];
+
+  assert.deepEqual(removeSetAtIndex(sets, 1), [
+    { id: "saved-1", reps: "10" },
+    { id: null, reps: "8" }
+  ]);
+  assert.deepEqual(sets, [
+    { id: "saved-1", reps: "10" },
+    { id: null, reps: "12" },
+    { id: null, reps: "8" }
   ]);
 });
 

@@ -153,6 +153,10 @@ export function pairedSetRows(previousSets = [], currentSets = []) {
   );
 }
 
+export function removeSetAtIndex(sets = [], setIndex) {
+  return sets.filter((_set, index) => index !== setIndex);
+}
+
 export function isSessionExerciseComplete(exercise) {
   const sets = exercise?.sets || [];
   return sets.length > 0 && sets.every((set) => set.id);
