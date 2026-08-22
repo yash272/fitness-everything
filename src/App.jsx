@@ -11,6 +11,7 @@ import {
 import AppHeader from "./AppHeader";
 import { buildFitnessExport, exportFilename } from "./exportData";
 import HistoryView from "./HistoryView";
+import { applyPersonalRecordFlags, bestSetForExercise, isBetterSet } from "./personalRecordUtils";
 import { normalizeStepsInput, normalizeWeightInput } from "./quickLogUtils";
 import SuggestedWorkoutPlan from "./SuggestedWorkoutPlan";
 import TodayView from "./TodayView";
@@ -278,6 +279,16 @@ function Tracker() {
     return best;
   }
 
+  function bestForPersonalRecord(exerciseName, trackingType = "weighted", selectedDate = todayKey(), excludeSetId = null) {
+    return bestSetForExercise({
+      workouts,
+      exerciseName,
+      trackingType,
+      selectedDate,
+      excludeSetId
+    });
+  }
+
   async function addExercise(event) {
     event.preventDefault();
     const name = exerciseForm.name.trim();
@@ -292,7 +303,7 @@ function Tracker() {
     try {
       const workoutType = workoutTypeForEdit(selectedWorkout);
       const workout = await ensureWorkoutForDate(workoutDate, workoutType, { did_workout: true });
-      const previous = bestBefore(name, trackingType, workoutDate);
+      const previous = bestForPersonalRecord(name, trackingType, workoutDate);
 
       const { data: exercise, error: exerciseError } = await supabase
         .from("exercises")
@@ -301,13 +312,13 @@ function Tracker() {
         .single();
       if (exerciseError) throw exerciseError;
 
-      const setRows = setRowsInput.map((set) => ({
+      const setRows = applyPersonalRecordFlags(setRowsInput, previous, trackingType).map((set) => ({
         exercise_id: exercise.id,
         user_id: userId,
         reps: set.reps,
         weight: set.weight,
         duration_minutes: set.duration_minutes,
-        is_pr: Boolean(previous) && isBetterSet(set, previous, trackingType)
+        is_pr: set.is_pr
       }));
       const { data: sets, error: setError } = await supabase
         .from("exercise_sets")
@@ -343,7 +354,7 @@ function Tracker() {
       const workout = await ensureWorkoutForDate(workoutDate, workoutType || undefined, { did_workout: true });
 
       for (const suggestion of suggestions) {
-        const previous = bestBefore(suggestion.name, suggestion.trackingType, workoutDate);
+        const previous = bestForPersonalRecord(suggestion.name, suggestion.trackingType, workoutDate);
         const { data: exercise, error: exerciseError } = await supabase
           .from("exercises")
           .insert({ workout_id: workout.id, user_id: userId, name: suggestion.name, tracking_type: suggestion.trackingType })
@@ -351,13 +362,13 @@ function Tracker() {
           .single();
         if (exerciseError) throw exerciseError;
 
-        const setRows = suggestion.sets.map((set) => ({
+        const setRows = applyPersonalRecordFlags(suggestion.sets, previous, suggestion.trackingType).map((set) => ({
           exercise_id: exercise.id,
           user_id: userId,
           reps: set.reps,
           weight: set.weight,
           duration_minutes: set.duration_minutes,
-          is_pr: Boolean(previous) && isBetterSet(set, previous, suggestion.trackingType)
+          is_pr: set.is_pr
         }));
         const { data: sets, error: setError } = await supabase
           .from("exercise_sets")
@@ -405,11 +416,8 @@ function Tracker() {
         persistedExercise = { ...data, exercise_sets: [] };
       }
 
-      const previous = bestBefore(exercise.name, trackingType, date);
-      const payload = {
-        ...normalized,
-        is_pr: Boolean(previous) && isBetterSet(normalized, previous, trackingType)
-      };
+      const previous = bestForPersonalRecord(exercise.name, trackingType, date, set.id);
+      const payload = applyPersonalRecordFlags([normalized], previous, trackingType)[0];
       const query = set.id
         ? supabase.from("exercise_sets").update(payload).eq("id", set.id)
         : supabase.from("exercise_sets").insert({
@@ -470,13 +478,13 @@ function Tracker() {
       setWorkoutDate(todayKey());
       return;
     }
-    const previous = bestBefore(exercise.name, trackingType, exerciseWorkoutDate);
+    const previous = bestForPersonalRecord(exercise.name, trackingType, exerciseWorkoutDate);
     const repeated = {
       reps: last.reps,
       weight: last.weight,
       duration_minutes: last.duration_minutes
     };
-    const isPr = Boolean(previous) && isBetterSet(repeated, previous, trackingType);
+    const isPr = applyPersonalRecordFlags([repeated], previous, trackingType)[0].is_pr;
     setSaving(true);
     const { data, error } = await supabase
       .from("exercise_sets")
@@ -1489,23 +1497,6 @@ function normalizeSetInput(set, trackingType) {
   const weight = Number(set.weight);
   if (set.weight === "" || Number.isNaN(weight)) return null;
   return { reps, weight, duration_minutes: null };
-}
-
-function isBetterSet(candidate, currentBest, trackingType) {
-  if (!candidate) return false;
-  if (!currentBest) return true;
-
-  if (trackingType === "time") {
-    return Number(candidate.duration_minutes || 0) > Number(currentBest.duration_minutes || 0);
-  }
-
-  if (trackingType === "bodyweight") {
-    return Number(candidate.reps || 0) > Number(currentBest.reps || 0);
-  }
-
-  const candidateWeight = Number(candidate.weight || 0);
-  const bestWeight = Number(currentBest.weight || 0);
-  return candidateWeight > bestWeight || (candidateWeight === bestWeight && Number(candidate.reps || 0) > Number(currentBest.reps || 0));
 }
 
 function formatSet(set, trackingType = "weighted") {
