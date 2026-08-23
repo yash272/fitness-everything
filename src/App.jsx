@@ -21,11 +21,12 @@ import { addSetToPlan, removeSetFromPlan, removeSetFromWorkouts, upsertSetInWork
 import { isSupabaseConfigured, supabase } from "./supabaseClient";
 import { clearWorkoutTypePatch, hasWorkoutActivity, splitForTimedActivity, toggleWorkoutType, workoutActivityFlag, workoutStageLabel, workoutStatusLabel, workoutTypeForEdit, workoutTypeLabel } from "./workoutDisplayUtils";
 
-const DEFAULT_WORKOUT_TYPES = ["Push", "Pull", "Legs", "Cardio", "Sports", "Mobility"];
+const DEFAULT_WORKOUT_TYPES = ["Push", "Pull", "Legs", "Legs + Abs", "Cardio", "Sports", "Mobility"];
 const DEFAULT_EXERCISES = {
   Push: ["Flat Dumbbell Bench Press", "Incline Dumbbell Press", "Dumbbell Shoulder Press", "Lateral Raise", "Triceps Rope Pushdown", "Push-ups"],
   Pull: ["Lat Pulldown", "Low Row", "Machine Rear Delt", "Bicep Curl", "Hammer Curl"],
   Legs: ["Leg Extension", "Goblet Squats", "Leg Curls", "Romanian Deadlift", "Calf Raise"],
+  "Legs + Abs": ["Leg Extension", "Goblet Squats", "Cable Crunch", "Hanging Knee Raise", "Abdominal Crunch"],
   Cardio: ["Treadmill", "Bike", "Rowing", "Stair Climber", "Elliptical"],
   Sports: ["Badminton", "Basketball", "Soccer", "Tennis"],
   Mobility: ["Stretching", "Yoga", "Warmup"]

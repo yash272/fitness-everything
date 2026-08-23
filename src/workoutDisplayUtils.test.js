@@ -46,6 +46,7 @@ test("labels a strength workout and timed activity saved on the same day", () =>
 
 test("preserves the primary strength split when saving a timed activity", () => {
   assert.equal(workoutDisplayUtils.splitForTimedActivity({ split: "Push" }, "Badminton"), "Push");
+  assert.equal(workoutDisplayUtils.splitForTimedActivity({ split: "Legs + Abs" }, "Badminton"), "Legs + Abs");
   assert.equal(workoutDisplayUtils.splitForTimedActivity({ split: "" }, "Badminton"), "Badminton");
   assert.equal(workoutDisplayUtils.splitForTimedActivity(null, "Cardio"), "Cardio");
 });
