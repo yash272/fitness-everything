@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import {
   buildProgressivePlanForSplit,
   buildSuggestedPlanForSplit,
+  canonicalSplit,
   estimateSetStrength,
   formatSuggestedPrescription,
   progressBestSet,
@@ -146,6 +147,22 @@ assert.deepEqual(legsPlan.exercises.map((exercise) => exercise.name), [
 ]);
 assert.equal(legsPlan.exercises[0].sets[0].weight, "145");
 assert.equal(legsPlan.exercises[2].sets[0].weight, "115");
+
+const legsAbsPlan = buildSuggestedPlanForSplit("Legs + Abs");
+assert.equal(legsAbsPlan.title, "Suggested Legs + Abs Day");
+assert.deepEqual(legsAbsPlan.exercises.map((exercise) => exercise.name), [
+  "Leg Extension",
+  "Goblet Squats",
+  "Cable Crunch",
+  "Hanging Knee Raise",
+  "Abdominal Crunch"
+]);
+assert.equal(legsAbsPlan.exercises[0].trackingType, "weighted");
+assert.equal(legsAbsPlan.exercises[2].trackingType, "weighted");
+assert.equal(legsAbsPlan.exercises[3].trackingType, "bodyweight");
+assert.equal(formatSuggestedPrescription(legsAbsPlan.exercises[3]), "12 reps / 10 reps / 8 reps");
+assert.equal(canonicalSplit("legs abs"), "Legs + Abs");
+assert.equal(canonicalSplit("Legs + Abs"), "Legs + Abs");
 
 const unknownPlan = buildSuggestedPlanForSplit("Sports");
 assert.equal(unknownPlan, null);

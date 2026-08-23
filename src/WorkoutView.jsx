@@ -64,7 +64,7 @@ export default function WorkoutView({
           <h2>{selectedSplit || "Rest"}</h2>
         </div>
         <div className="session-type-choices" aria-label="Strength session type">
-          {["Push", "Pull", "Legs"].map((type) => (
+          {["Push", "Pull", "Legs", "Legs + Abs"].map((type) => (
             <button type="button" key={type} className={selectedSplit === type ? "active" : ""} onClick={() => chooseStrengthType(type)} aria-pressed={selectedSplit === type}>
               <Dumbbell size={15} />
               {type}

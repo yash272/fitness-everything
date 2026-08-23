@@ -32,6 +32,17 @@ export const WORKOUT_PLAN_TEMPLATES = {
       weightedExercise("Romanian Deadlift", [set("10", "50"), set("10", "50"), set("10", "50")], "Hinge, soft knees, slow negative. Treat as per-dumbbell if that is how you log it."),
       weightedExercise("Calf Raise", [set("12", "90"), set("12", "90"), set("12", "90")], "Use full stretch and pause at the top; adjust if using a different calf machine.")
     ]
+  },
+  "Legs + Abs": {
+    title: "Suggested Legs + Abs Day",
+    description: "Short leg maintenance plus direct core work: quads, squat pattern, weighted flexion, hanging raise, and high-rep crunches.",
+    exercises: [
+      weightedExercise("Leg Extension", [set("10", "145"), set("10", "130"), set("10", "130")], "Keep the first heavy set; use controlled back-off sets."),
+      weightedExercise("Goblet Squats", [set("10", "50"), set("10", "50"), set("10", "50")], "Controlled depth and bracing before adding load."),
+      weightedExercise("Cable Crunch", [set("12", "50"), set("12", "50"), set("12", "50")], "Round through the abs; do not turn it into a hip hinge."),
+      bodyweightExercise("Hanging Knee Raise", [bodyweightSet("12"), bodyweightSet("10"), bodyweightSet("8")], "Posterior pelvic tilt at the top; slow lower."),
+      bodyweightExercise("Abdominal Crunch", [bodyweightSet("25"), bodyweightSet("25"), bodyweightSet("25")], "Controlled reps; exhale hard at the top.")
+    ]
   }
 };
 
@@ -192,6 +203,7 @@ function canonicalSplitFromTitle(title) {
   const normalized = String(title || "").toLowerCase();
   if (normalized.includes("push")) return "Push";
   if (normalized.includes("pull")) return "Pull";
+  if (normalized.includes("legs + abs") || normalized.includes("legs and abs")) return "Legs + Abs";
   if (normalized.includes("leg")) return "Legs";
   return "";
 }
@@ -200,6 +212,8 @@ export function canonicalSplit(split) {
   const normalized = String(split || "").trim().toLowerCase();
   if (normalized === "push") return "Push";
   if (normalized === "pull") return "Pull";
+  if (["legs+abs", "legs abs", "legs and abs", "leg abs", "leg+abs"].includes(normalized.replace(/\s*\+\s*/g, "+"))) return "Legs + Abs";
+  if (["legs abs", "legs and abs", "leg abs"].includes(normalized)) return "Legs + Abs";
   if (normalized === "leg" || normalized === "legs") return "Legs";
   return "";
 }
