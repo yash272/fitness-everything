@@ -244,3 +244,24 @@ test("moves to the next unfinished exercise only after the current exercise is d
 
   assert.equal(nextActiveExerciseIndexAfterConfirmation(exercises, "bench"), 0);
 });
+
+
+test("previous single armed row remains selectable after more than 30 earlier names", () => {
+  const loggedExercise = (name) => ({
+    name, tracking_type: "weighted",
+    exercise_sets: [{ id: name, reps: 10, weight: 40, logged_at: "2026-09-21T12:00:00Z" }]
+  });
+  const workouts = [{
+    workout_date: "2026-09-21", split: "Pull",
+    exercises: [
+      ...Array.from({ length: 31 }, (_item, index) => loggedExercise(`Exercise ${String(index).padStart(2, "0")}`)),
+      loggedExercise("Single Armed Row")
+    ]
+  }];
+  const draft = buildStrengthSessionDraft({ split: "Pull", selectedDate: "2026-09-28", workouts });
+  const match = draft.exerciseOptions.find((option) => option.name.toLowerCase().includes("single armed"));
+  assert.equal(match?.name, "Single Armed Row");
+  const added = buildCustomExerciseFromHistory(match);
+  assert.equal(added.previousDate, "2026-09-21");
+  assert.equal(added.previousSets.length, 1);
+});

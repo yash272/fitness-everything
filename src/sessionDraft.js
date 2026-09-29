@@ -121,7 +121,7 @@ export function buildStrengthSessionDraft({ split, selectedDate, workouts = [] }
   return {
     split: category,
     selectedDate,
-    exerciseOptions: exerciseHistoryOptions({ workouts, selectedDate, query: "", limit: 30 }),
+    exerciseOptions: exerciseHistoryOptions({ workouts, selectedDate, query: "", limit: Infinity }),
     exercises: plan.exercises.map((exercise) => {
       const previous = latestMatchingExercise(workouts, category, selectedDate, exercise.name);
       return {
