@@ -10,6 +10,7 @@ import {
 } from "./appState";
 import AppHeader from "./AppHeader";
 import { buildFitnessExport, exportFilename } from "./exportData";
+import { activityTypeOptions, loadCustomActivityTypes, saveCustomActivityType } from "./customActivityTypes";
 import HistoryView from "./HistoryView";
 import { applyPersonalRecordFlags, bestSetForExercise, isBetterSet } from "./personalRecordUtils";
 import { normalizeStepsInput, normalizeWeightInput } from "./quickLogUtils";
@@ -21,7 +22,6 @@ import { addSetToPlan, removeSetFromPlan, removeSetFromWorkouts, upsertSetInWork
 import { isSupabaseConfigured, supabase } from "./supabaseClient";
 import { clearWorkoutTypePatch, hasWorkoutActivity, splitForTimedActivity, toggleWorkoutType, workoutActivityFlag, workoutStageLabel, workoutStatusLabel, workoutTypeForEdit, workoutTypeLabel } from "./workoutDisplayUtils";
 
-const DEFAULT_WORKOUT_TYPES = ["Push", "Pull", "Legs", "Legs + Abs", "Cardio", "Sports", "Mobility"];
 const DEFAULT_EXERCISES = {
   Push: ["Flat Dumbbell Bench Press", "Incline Dumbbell Press", "Dumbbell Shoulder Press", "Lateral Raise", "Triceps Rope Pushdown", "Push-ups"],
   Pull: ["Lat Pulldown", "Low Row", "Machine Rear Delt", "Bicep Curl", "Hammer Curl"],
@@ -65,6 +65,7 @@ function Tracker() {
   const [theme, setTheme] = useState(() => localStorage.getItem("fitness-theme") || "light");
   const [range, setRange] = useState(30);
   const [workouts, setWorkouts] = useState([]);
+  const [savedCustomActivityTypes, setSavedCustomActivityTypes] = useState(() => loadCustomActivityTypes(localStorage, userId));
   const [bodyLogs, setBodyLogs] = useState([]);
   const [foodLogs, setFoodLogs] = useState([]);
   const [logDate, setLogDate] = useState(todayKey());
@@ -150,14 +151,11 @@ function Tracker() {
     workouts.forEach((workout) => workout.exercises?.forEach((exercise) => names.add(exercise.name)));
     return [...names].sort((a, b) => a.localeCompare(b));
   }, [workouts]);
-  const workoutTypes = useMemo(() => {
-    const types = new Set(DEFAULT_WORKOUT_TYPES);
-    workouts.forEach((workout) => {
-      const type = workoutTypeForEdit(workout);
-      if (type) types.add(type);
-    });
-    return [...types].sort((a, b) => a.localeCompare(b));
-  }, [workouts]);
+  const workoutTypes = useMemo(() => activityTypeOptions(workouts, savedCustomActivityTypes), [workouts, savedCustomActivityTypes]);
+
+  function rememberCustomActivity(type) {
+    setSavedCustomActivityTypes(saveCustomActivityType(localStorage, userId, type));
+  }
   const loadData = useCallback(async () => {
     setLoading(true);
     const [workoutResult, bodyResult, foodResult] = await Promise.all([
@@ -781,6 +779,7 @@ function Tracker() {
             workout={selectedWorkout}
             workouts={workouts}
             workoutTypes={workoutTypes}
+            onRememberActivity={rememberCustomActivity}
             saving={saving}
             onChangeType={changeSplit}
             onClearType={() => clearWorkoutType(workoutDate)}

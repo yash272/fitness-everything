@@ -13,6 +13,7 @@ export default function WorkoutView({
   workout,
   workouts,
   workoutTypes,
+  onRememberActivity,
   saving,
   onChangeType,
   onClearType,
@@ -52,8 +53,9 @@ export default function WorkoutView({
     await onChangeType(type);
   }
 
-  function chooseActivity(type) {
+  function chooseActivity(type, remember = false) {
     setActiveActivity(type);
+    if (remember) onRememberActivity(type);
   }
 
   return (
@@ -81,12 +83,12 @@ export default function WorkoutView({
         </div>
         <div className="custom-session-type">
           <input value={customType} list="workout-type-options" placeholder="Run, basketball, mobility..." onChange={(event) => setCustomType(event.target.value)} onKeyDown={(event) => {
-            if (event.key === "Enter" && customType.trim()) chooseActivity(customType.trim());
+            if (event.key === "Enter" && customType.trim()) chooseActivity(customType.trim(), true);
           }} aria-label="Custom activity type" />
           <datalist id="workout-type-options">
             {workoutTypes.map((type) => <option value={type} key={type} />)}
           </datalist>
-          <button type="button" onClick={() => chooseActivity(customType.trim())} disabled={!customType.trim()} aria-label="Set custom activity type"><Plus size={18} /></button>
+          <button type="button" onClick={() => chooseActivity(customType.trim(), true)} disabled={!customType.trim()} aria-label="Set custom activity type"><Plus size={18} /></button>
         </div>
       </section>
 
